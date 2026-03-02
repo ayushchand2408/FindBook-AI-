@@ -1,8 +1,9 @@
-import { useParams } from "react-router-dom";
+import { useNavigate , useParams } from "react-router-dom";
 import { useEffect, useState } from "react";
 
 function BookDetail() {
   const { id } = useParams();
+  const navigate = useNavigate();
   const [book, setBook] = useState(null);
 
   useEffect(() => {
@@ -27,6 +28,20 @@ function BookDetail() {
 
   return (
     <div style={{ padding: "40px" }}>
+      <button
+      onClick={() => navigate(-1)}
+      style={{
+        marginBottom: "20px",
+        padding: "8px 15px",
+        cursor: "pointer",
+        background: "#111",
+        color: "#fff",
+        border: "none",
+        borderRadius: "6px"
+      }}
+    >
+      ← Back to Results
+    </button>
       <h2>{info.title}</h2>
 
       {info.imageLinks?.thumbnail && (

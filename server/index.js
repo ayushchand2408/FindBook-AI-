@@ -1,6 +1,7 @@
 const express = require("express");
 const cors = require("cors");
 const axios = require("axios");
+require("dotenv").config();
 
 const app = express();
 
@@ -13,16 +14,24 @@ app.get("/api/test", (req, res) => {
 });
 
 // 🔥 NEW: Book Search Route
+// 🔥 FIXED Book Search Route
 app.get("/api/search", async (req, res) => {
   const query = req.query.q;
+  const startIndex = req.query.startIndex || 0;
 
   try {
     const response = await axios.get(
-      `https://www.googleapis.com/books/v1/volumes?q=${query}`
+      `https://www.googleapis.com/books/v1/volumes?q=intitle:${query}&startIndex=${startIndex}&maxResults=10&key=${process.env.GOOGLE_BOOKS_KEY}`
     );
 
     res.json(response.data);
+
   } catch (error) {
+    console.error(
+      "SEARCH ERROR:",
+      error.response?.data || error.message
+    );
+
     res.status(500).json({ error: "Error fetching books" });
   }
 });
@@ -32,13 +41,18 @@ app.get("/api/book/:id", async (req, res) => {
   try {
     const bookId = req.params.id;
 
+    console.log("Fetching book:", bookId);
+
     const response = await axios.get(
-      `https://www.googleapis.com/books/v1/volumes/${bookId}`
+      `https://www.googleapis.com/books/v1/volumes/${bookId}?key=${process.env.GOOGLE_BOOKS_KEY}`
     );
 
     res.json(response.data);
   } catch (error) {
-    console.error(error);
+    console.error("BOOK DETAIL ERROR:",
+      error.response?.data || error.message
+    );
+
     res.status(500).json({ message: "Error fetching book details" });
   }
 });
