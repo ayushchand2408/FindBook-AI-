@@ -13,6 +13,9 @@ function Home() {
   const [searchQuery, setSearchQuery] = useState(
     searchParams.get("q") || ""
   );
+  const [submittedQuery, setSubmittedQuery] = useState(
+    searchParams.get("q") || ""
+  );
   //fr pagination
   const [page, setPage] = useState(
     Number(searchParams.get("page")) || 0
@@ -23,6 +26,7 @@ function Home() {
     if (!searchQuery.trim()) return;
 
     setPage(0);
+    setSubmittedQuery(searchQuery);
 
     setSearchParams({
       q: searchQuery,
@@ -31,7 +35,7 @@ function Home() {
   };
   
   useEffect(() => {
-    if (!searchQuery.trim()) {
+    if (!submittedQuery.trim()) {
       setBooks([]);
       return;
     }
@@ -43,7 +47,7 @@ function Home() {
         setError("");
 
         const res = await fetch(
-          `http://localhost:5000/api/search?q=intitle:${searchQuery}&startIndex=${page * resultsPerPage}`
+          `http://localhost:5000/api/search?q=intitle:${submittedQuery}&startIndex=${page * resultsPerPage}`
         );
 
         const data = await res.json();
@@ -64,7 +68,7 @@ function Home() {
     };
 
     fetchBooks();
-  }, [page, searchQuery]);
+  }, [page, submittedQuery]);
 
   return (
     <div>
@@ -100,7 +104,7 @@ function Home() {
         {loading && <p>Loading books...</p>}
         {error && <p style={{ color: "red" }}>{error}</p>}
 
-        {!loading && searchQuery && books.length === 0 && !error && (
+        {!loading && submittedQuery && books.length === 0 && !error && (
           <p style={{ fontSize: "18px", marginTop: "20px" }}>
             No books found for "<strong>{searchQuery}</strong>"
           </p>
@@ -143,7 +147,14 @@ function Home() {
           <div style={{ marginTop: "20px" }}>
             <button
               disabled={page === 0}
-              onClick={() => setPage(prev => prev - 1)}
+              onClick={() => {
+                const newPage = page - 1;
+                setPage(newPage);
+                setSearchParams({
+                  q: searchQuery,
+                  page: newPage
+                });
+              }}
               style={{ marginRight: "10px" }}
             >
               Previous
