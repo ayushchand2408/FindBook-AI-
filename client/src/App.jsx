@@ -8,7 +8,7 @@ function Home() {
   const [books, setBooks] = useState([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
-  
+  const [selectedFile, setSelectedFile] = useState(null);
   const [totalItems, setTotalItems] = useState(0);
   const [searchParams, setSearchParams] = useSearchParams();
   const [searchQuery, setSearchQuery] = useState(
@@ -33,6 +33,41 @@ function Home() {
       q: searchQuery,
       page: 0
     });
+  };
+  const handleUpload = async () => {
+    if (!selectedFile) return;
+
+    const formData = new FormData();
+    formData.append("image", selectedFile);
+
+    try {
+      setLoading(true);
+      setError("");
+
+      const res = await fetch(
+        "http://localhost:5000/api/upload-book",
+        {
+          method: "POST",
+          body: formData,
+        }
+      );
+
+      const data = await res.json();
+
+      if (data.books) {
+        setBooks(data.books);
+        setSubmittedQuery(data.detectedText || "Image Search");
+        setTotalItems(data.books.length);
+        setPage(0);
+      } else {
+        setBooks([]);
+      }
+
+    } catch (err) {
+      setError("Image upload failed.");
+    } finally {
+      setLoading(false);
+    }
   };
   
   useEffect(() => {
@@ -93,8 +128,14 @@ function Home() {
 
       <div className="card">
         <h3>Upload Book Image</h3>
-        <input type="file" />
-        <button>Upload</button>
+        <input
+          type="file"
+          accept="image/*"
+          onChange={(e) => setSelectedFile(e.target.files[0])}
+        />
+        <button onClick={handleUpload}>
+          Upload & Detect
+        </button>
       </div>
     </div>
 

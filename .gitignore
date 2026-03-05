@@ -2,6 +2,8 @@ server/.env
 
 # Node modules
 server/node_modules
+server/uploads
+server/eng.traineddata
 
 # Environment variables
 .env
