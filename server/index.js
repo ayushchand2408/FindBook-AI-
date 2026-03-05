@@ -34,7 +34,7 @@ app.get("/api/test", (req, res) => {
   res.json({ message: "Backend is working 🚀" });
 });
 
-// 🔥 NEW: Book Search Route
+//  NEW: Book Search Route
 app.get("/api/search", async (req, res) => {
   const query = req.query.q;
   const startIndex = req.query.startIndex || 0;
@@ -77,7 +77,7 @@ app.get("/api/book/:id", async (req, res) => {
   }
 });
 
-// 📸 Upload + OCR + Search
+//  Upload + OCR + Search
 app.post("/api/upload-book", upload.single("image"), async (req, res) => {
   try {
     const imagePath = req.file.path;
@@ -86,37 +86,37 @@ app.post("/api/upload-book", upload.single("image"), async (req, res) => {
 
     // OCR
     const result = await Tesseract.recognize(imagePath, "eng");
-    const extractedText = result.data.text;
+    const rawText = result.data.text;
 
-    if (!extractedText.trim()) {
-      return res.json({ message: "No text detected" });
-    }
+    console.log("Detected Text:", rawText);
 
-    // Clean text (first 3 non-empty lines)
-    const cleanedText = extractedText
-      .split("\n")
-      .filter(line => line.trim() !== "")
-      .slice(0, 3)
+    //  Clean text (remove extra spaces & new lines)
+    const cleanedText = rawText
+      .replace(/\n/g, " ")
+      .replace(/\s+/g, " ")
+      .trim()
+      .split(" ")
+      .slice(0, 6) // take first 6 words only
       .join(" ");
 
-    console.log("Detected Text:", cleanedText);
+    console.log("Searching for:", cleanedText);
 
-    // Search in Google Books
+    //  Auto search in Google Books
     const booksResponse = await axios.get(
-      `https://www.googleapis.com/books/v1/volumes?q=intitle:${encodeURIComponent(cleanedText)}&key=${process.env.GOOGLE_BOOKS_KEY}`
+      `https://www.googleapis.com/books/v1/volumes?q=intitle:${cleanedText}&maxResults=8&key=${process.env.GOOGLE_BOOKS_KEY}`
     );
 
     // Optional: delete image after processing
     fs.unlinkSync(imagePath);
-
+    
     res.json({
       detectedText: cleanedText,
       books: booksResponse.data.items || [],
     });
 
   } catch (error) {
-    console.error("OCR ERROR:", error.message);
-    res.status(500).json({ error: "OCR processing failed" });
+    console.error("UPLOAD ERROR:", error.message);
+    res.status(500).json({ error: "Failed to process image" });
   }
 });
 

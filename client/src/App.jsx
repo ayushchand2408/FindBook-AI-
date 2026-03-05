@@ -34,6 +34,7 @@ function Home() {
       page: 0
     });
   };
+  //Handle Upload Button
   const handleUpload = async () => {
     if (!selectedFile) return;
 
@@ -42,29 +43,24 @@ function Home() {
 
     try {
       setLoading(true);
-      setError("");
 
-      const res = await fetch(
-        "http://localhost:5000/api/upload-book",
-        {
-          method: "POST",
-          body: formData,
-        }
-      );
+      const res = await fetch("http://localhost:5000/api/upload-book", {
+        method: "POST",
+        body: formData,
+      });
 
       const data = await res.json();
 
-      if (data.books) {
-        setBooks(data.books);
-        setSubmittedQuery(data.detectedText || "Image Search");
-        setTotalItems(data.books.length);
-        setPage(0);
-      } else {
-        setBooks([]);
-      }
+      console.log("Detected:", data.detectedText);
+      console.log("Books:", data.books);
 
-    } catch (err) {
-      setError("Image upload failed.");
+      setBooks(data.books); 
+      setSubmittedQuery(""); // clear manual search state
+      setSearchParams({});
+
+    } catch (error) {
+      console.error("Upload failed:", error);
+      alert("Image upload failed");
     } finally {
       setLoading(false);
     }
@@ -138,6 +134,8 @@ function Home() {
         </button>
       </div>
     </div>
+
+
 
     {/* Results Section */}
     <div className="results-container">
