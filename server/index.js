@@ -41,7 +41,7 @@ app.get("/api/search", async (req, res) => {
 
   try {
     const response = await axios.get(
-      `https://www.googleapis.com/books/v1/volumes?q=intitle:${query}&startIndex=${startIndex}&maxResults=10&key=${process.env.GOOGLE_BOOKS_KEY}`
+      `https://www.googleapis.com/books/v1/volumes?q=${query}&startIndex=${startIndex}&maxResults=10&key=${process.env.GOOGLE_BOOKS_KEY}`
     );
 
     res.json(response.data);
@@ -103,7 +103,7 @@ app.post("/api/upload-book", upload.single("image"), async (req, res) => {
 
     //  Auto search in Google Books
     const booksResponse = await axios.get(
-      `https://www.googleapis.com/books/v1/volumes?q=intitle:${cleanedText}&maxResults=8&key=${process.env.GOOGLE_BOOKS_KEY}`
+      `https://www.googleapis.com/books/v1/volumes?q=${cleanedText}&maxResults=8&key=${process.env.GOOGLE_BOOKS_KEY}`
     );
 
     // Optional: delete image after processing

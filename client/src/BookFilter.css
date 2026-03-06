@@ -1,0 +1,115 @@
+/* Page Background */
+.filter-page {
+  min-height: 100vh;
+  background: #313234;
+
+  display: flex;
+  flex-direction: column;   /* IMPORTANT */
+  align-items: center;      /* center horizontally */
+
+  padding: 40px 20px;
+}
+
+/* Main Card */
+.filter-card {
+  background: white;
+  padding: 30px;
+  width: 420px;
+  border-radius: 10px;
+  box-shadow: 0px 4px 12px rgba(0,0,0,0.1);
+}
+
+.filter-card h2 {
+  text-align: center;
+  margin-bottom: 25px;
+  color: #222;
+}
+
+/* Form Layout */
+.filter-form {
+  display: flex;
+  flex-direction: column;
+  gap: 15px;
+}
+
+/* Labels */
+.filter-form label {
+  font-size: 14px;
+  font-weight: 600;
+  color: #333;
+}
+
+/* Inputs */
+.filter-form input,
+.filter-form select {
+  width: 100%;
+  padding: 10px;
+  border-radius: 6px;
+  border: 1px solid #ccc;
+  font-size: 14px;
+  transition: border 0.2s;
+}
+
+.filter-form input:focus,
+.filter-form select:focus {
+  outline: none;
+  border-color: #4a90e2;
+}
+
+/* Checkbox Row */
+.checkbox-row {
+  display: flex;
+  align-items: center;
+  gap: 6px; /* smaller space between checkbox and text */
+}
+
+.checkbox-row input {
+  width: auto;
+  margin: 0;
+}
+
+.checkbox-row label {
+  margin: 0;
+  font-size: 14px;
+}
+
+/* Buttons */
+.filter-buttons {
+  display: flex;
+  justify-content: space-between;
+  margin-top: 10px;
+}
+
+.filter-buttons button {
+  padding: 10px 16px;
+  border: none;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 14px;
+}
+
+/* Primary Button */
+.search-btn {
+  background: #4a90e2;
+  color: white;
+}
+
+.search-btn:hover {
+  background: #357bd8;
+}
+
+/* Secondary Button */
+.back-btn {
+  background: #1d1b1b;
+}
+
+.back-btn:hover {
+  background: #c9c9c9;
+}
+
+/* result container */
+.results-container {
+  width: 100%;
+  max-width: 1000px;
+  margin-top: 40px;
+}

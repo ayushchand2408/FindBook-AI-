@@ -1,6 +1,7 @@
 import { useState , useEffect } from "react";
 import { Routes, Route , Link ,  useSearchParams } from "react-router-dom";
 import BookDetail from "./BookDetail";
+import BookFilter from "./BookFilter";
 import './App.css';
 
 function Home() {
@@ -79,7 +80,7 @@ function Home() {
         setError("");
 
         const res = await fetch(
-          `http://localhost:5000/api/search?q=intitle:${submittedQuery}&startIndex=${page * resultsPerPage}`
+          `http://localhost:5000/api/search?q=${submittedQuery}&startIndex=${page * resultsPerPage}`
         );
 
         const data = await res.json();
@@ -124,15 +125,23 @@ function Home() {
 
       <div className="card">
         <h3>Upload Book Image</h3>
-        <input
-          type="file"
-          accept="image/*"
-          onChange={(e) => setSelectedFile(e.target.files[0])}
-        />
-        <button onClick={handleUpload}>
-          Upload & Detect
-        </button>
-      </div>
+          <input
+            type="file"
+            accept="image/*"
+            onChange={(e) => setSelectedFile(e.target.files[0])}
+          />
+          <button onClick={handleUpload}>
+            Upload & Detect
+          </button>
+        </div>
+        <div className="card">
+          <h3>Find Books by Preference</h3>
+          <p>Don't know what to read? Use filters to discover books.</p>
+
+          <Link to="/filter">
+            <button>Open Filters</button>
+          </Link>
+        </div>
     </div>
 
 
@@ -211,6 +220,7 @@ function App() {
     <Routes>
       <Route path="/" element={<Home />} />
       <Route path="/book/:id" element={<BookDetail />} />
+      <Route path="/filter" element={<BookFilter />} />
     </Routes>
   );
 }
