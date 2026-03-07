@@ -9,9 +9,7 @@ function BookDetail() {
   useEffect(() => {
     const fetchBook = async () => {
       try {
-        const res = await fetch(
-          `http://localhost:5000/api/book/${id}`
-        );
+        const res = await fetch(`http://localhost:5000/api/book/${id}`);
         const data = await res.json();
         setBook(data);
       } catch (error) {
@@ -25,23 +23,44 @@ function BookDetail() {
   if (!book) return <h3 style={{ padding: "30px" }}>Loading...</h3>;
 
   const info = book.volumeInfo;
+  const saleInfo = book.saleInfo;
+  const wordsPerPage = 275;
+  const readingSpeed = 250;
+
+  const totalWords = (info.pageCount || 0) * wordsPerPage;
+  const readingTimeMinutes = Math.round(totalWords / readingSpeed);
+
+  const hours = Math.floor(readingTimeMinutes / 60);
+  const minutes = readingTimeMinutes % 60;
+  let difficulty = "Unknown";
+
+  if (info.pageCount) {
+    if (info.pageCount < 150) difficulty = "Easy Read";
+    else if (info.pageCount <= 350) difficulty = "Medium Read";
+    else difficulty = "Long Read";
+  }
+
+  const query = encodeURIComponent(`${info.title} ${info.authors?.[0] || ""}`);
+  const amazonLink = `https://www.amazon.in/s?k=${query}`;
+  const googleLink = `https://www.google.com/search?q=${query}+book`;
 
   return (
     <div style={{ padding: "40px" }}>
       <button
-      onClick={() => navigate(-1)}
-      style={{
-        marginBottom: "20px",
-        padding: "8px 15px",
-        cursor: "pointer",
-        background: "#111",
-        color: "#fff",
-        border: "none",
-        borderRadius: "6px"
-      }}
-    >
-      ← Back to Results
-    </button>
+        onClick={() => navigate(-1)}
+        style={{
+          marginBottom: "20px",
+          padding: "8px 15px",
+          cursor: "pointer",
+          background: "#111",
+          color: "#fff",
+          border: "none",
+          borderRadius: "6px"
+        }}
+      >
+        ← Back to Results
+      </button>
+
       <h2>{info.title}</h2>
 
       {info.imageLinks?.thumbnail && (
@@ -57,9 +76,48 @@ function BookDetail() {
       <p><strong>Published:</strong> {info.publishedDate}</p>
       <p><strong>Pages:</strong> {info.pageCount}</p>
 
-      <div
-        dangerouslySetInnerHTML={{ __html: info.description }}
-      />
+      <p>
+      <strong>Estimated Reading Time:</strong>{" "}
+      {info.pageCount ? `${hours} hr ${minutes} min` : "Unknown"}
+      </p>
+      <p>
+        <strong>Difficulty:</strong> {difficulty}
+      </p>
+      <p> 
+        <strong>Price:</strong>{" "}
+        {saleInfo?.listPrice ? (
+          `${saleInfo.listPrice.amount} ${saleInfo.listPrice.currencyCode}`
+        ) : (
+          <a href={amazonLink} target="_blank" rel="noopener noreferrer">
+            Check on Amazon
+          </a>
+        )}
+      </p>
+      <div className="book-links">
+        <h3>Find this Book</h3>
+
+        <a href={amazonLink} target="_blank" rel="noopener noreferrer">
+          🛒 Buy on Amazon
+        </a>
+
+        <br />
+
+        <a href={googleLink} target="_blank" rel="noopener noreferrer">
+          🔎 Search on Google
+        </a>
+
+        <br />
+
+        {info.previewLink && (
+          <a href={info.previewLink} target="_blank" rel="noopener noreferrer">
+            📖 Read Preview on Google Books
+          </a>
+        )}
+      </div>
+      <h2>Description</h2>
+      {info.description && (
+        <div dangerouslySetInnerHTML={{ __html: info.description }} />
+      )}
     </div>
   );
 }

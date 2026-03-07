@@ -5,6 +5,7 @@ const multer = require("multer");
 const Tesseract = require("tesseract.js");
 const path = require("path");
 const fs = require("fs");
+const mongoose = require("mongoose");
 require("dotenv").config();
 
 const app = express();
@@ -16,7 +17,102 @@ app.use(express.json());
 if (!fs.existsSync("uploads")) {
   fs.mkdirSync("uploads");
 }
+mongoose.connect(process.env.MONGO_URI)
+.then(() => console.log("MongoDB connected"))
+.catch(err => console.log(err));
 
+const bcrypt = require("bcrypt");
+const jwt = require("jsonwebtoken");
+const User = require("./models/user");
+const auth = require("./middleware/auth");
+
+
+//For Login
+app.post("/api/login", async (req, res) => {
+
+  try {
+
+    const { email, password } = req.body;
+
+    const user = await User.findOne({ email });
+
+    if (!user) {
+      return res.status(400).json({ error: "User not found" });
+    }
+
+    const validPassword = await bcrypt.compare(password, user.password);
+
+    if (!validPassword) {
+      return res.status(400).json({ error: "Invalid password" });
+    }
+
+    const token = jwt.sign(
+      { userId: user._id },
+      "secretkey",
+      { expiresIn: "1d" }
+    );
+
+    res.json({ token });
+
+  } catch (error) {
+    res.status(500).json({ error: "Login failed" });
+  }
+
+});
+
+//For SignUp
+app.post("/api/register", async (req, res) => {
+
+  try {
+    const { name, email, password } = req.body;
+
+    const hashedPassword = await bcrypt.hash(password, 10);
+
+    const user = new User({
+      name,
+      email,
+      password: hashedPassword
+    });
+
+    await user.save();
+
+    res.json({ message: "User registered successfully" });
+
+  } catch (err) {
+    res.status(500).json({ error: "Registration failed" });
+  }
+
+});
+
+//Favorite Books Post
+app.post("/api/favorite", auth, async (req, res) => {
+
+  const { bookId, title, thumbnail } = req.body;
+
+  const user = await User.findById(req.userId);
+
+  const exists = user.favorites.find(b => b.bookId === bookId);
+
+  if (exists) {
+    return res.json({ message: "Already saved" });
+  }
+
+  user.favorites.push({ bookId, title, thumbnail });
+
+  await user.save();
+
+  res.json({ message: "Book saved ❤️" });
+
+});
+
+//For Fetching 
+app.get("/api/favorites", auth, async (req, res) => {
+
+  const user = await User.findById(req.userId);
+
+  res.json(user.favorites);
+
+});
 // Multer setup
 const storage = multer.diskStorage({
   destination: (req, file, cb) => {
@@ -28,11 +124,6 @@ const storage = multer.diskStorage({
 });
 
 const upload = multer({ storage });
-
-// Test route
-app.get("/api/test", (req, res) => {
-  res.json({ message: "Backend is working 🚀" });
-});
 
 //  NEW: Book Search Route
 app.get("/api/search", async (req, res) => {

@@ -10,14 +10,18 @@ body, html, #root {
 }
 
 /* Navbar */
-.navbar {
-  background: linear-gradient(90deg, #111, #222);
-  color: #fff;
-  padding: 20px;
-  text-align: center;
-  font-size: 22px;
-  font-weight: 600;
-  letter-spacing: 1px;
+.navbar{
+display:flex;
+justify-content:space-between;
+align-items:center;
+padding:15px 40px;
+background:#111;
+color:white;
+}
+
+.navbar button{
+padding:8px 14px;
+cursor:pointer;
 }
 
 /* Main container for search cards */

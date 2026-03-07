@@ -1,11 +1,23 @@
 import { useState , useEffect } from "react";
-import { Routes, Route , Link ,  useSearchParams } from "react-router-dom";
+import { Routes, Route , Link ,  useSearchParams , useNavigate } from "react-router-dom";
 import BookDetail from "./BookDetail";
 import BookFilter from "./BookFilter";
+import Login from "./Login";
+import Favorites from "./Favorites";
+
 import './App.css';
 
+
 function Home() {
-  
+  const genres = [
+    "fiction",
+    "science",
+    "history",
+    "technology",
+    "romance",
+    "mystery",
+    "self-help"
+  ];
   const [books, setBooks] = useState([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
@@ -18,6 +30,10 @@ function Home() {
   const [submittedQuery, setSubmittedQuery] = useState(
     searchParams.get("q") || ""
   );
+  const randomGenre = genres[Math.floor(Math.random() * genres.length)];
+  const navigate = useNavigate();
+  const token = localStorage.getItem("token");
+
   //fr pagination
   const [page, setPage] = useState(
     Number(searchParams.get("page")) || 0
@@ -34,6 +50,32 @@ function Home() {
       q: searchQuery,
       page: 0
     });
+  };
+  //To add favorite books
+  const saveBook = async (book) => {
+
+    const token = localStorage.getItem("token");
+
+    if (!token) {
+      alert("Please login first");
+      return;
+    }
+
+    await fetch("http://localhost:5000/api/favorite", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "Authorization": token
+      },
+      body: JSON.stringify({
+        bookId: book.id,
+        title: book.volumeInfo.title,
+        thumbnail: book.volumeInfo.imageLinks?.thumbnail
+      })
+    });
+
+    alert("Book saved ❤️");
+
   };
   //Handle Upload Button
   const handleUpload = async () => {
@@ -65,6 +107,19 @@ function Home() {
     } finally {
       setLoading(false);
     }
+  };
+  const getRandomBook = async () => {
+    const randomIndex = Math.floor(Math.random() * 40);
+
+    const res = await fetch(
+      `http://localhost:5000/api/search?q=${randomGenre}&startIndex=${randomIndex}`
+    );
+
+    const data = await res.json();
+
+    const randomBook = data.items[0];
+
+    navigate(`/book/${randomBook.id}`);
   };
   
   useEffect(() => {
@@ -108,6 +163,29 @@ function Home() {
     {/* Navbar */}
     <nav className="navbar">
       <h2 style={{ margin: 0 }}>FindBook AI 📚</h2>
+      {token && (
+        <Link to="/favorites">
+          <button>Favorites ❤️</button>
+        </Link>
+      )}
+      {!token && (
+        <Link to="/login">
+          <button>Login</button>
+        </Link>
+      )}
+
+      {token && (
+        <button
+          onClick={() => {
+            localStorage.removeItem("token");
+            navigate("/"); 
+            window.location.reload();
+          }}
+        >
+          Logout
+        </button>
+      )}
+      
     </nav>
 
     {/* Search Section */}
@@ -120,6 +198,9 @@ function Home() {
           value={searchQuery}
           onChange={(e) => setSearchQuery(e.target.value)}
         />
+        <button onClick={getRandomBook}>
+          🎲 Surprise Me
+        </button>
         <button onClick={handleSearch}>Search</button>
       </div>
 
@@ -168,7 +249,9 @@ function Home() {
                 src={book.volumeInfo.imageLinks.thumbnail}
                 alt="cover"
               />
+              
             )}
+            
 
             <Link
               to={`/book/${book.id}`}
@@ -178,8 +261,14 @@ function Home() {
             </Link>
 
             <p>{book.volumeInfo.authors?.join(", ")}</p>
+            <button
+              onClick={() => saveBook(book)}
+            >
+              ❤️ Save
+            </button>
           </div>
         ))}
+
       </div>
 
       {/* Pagination */}
@@ -221,6 +310,8 @@ function App() {
       <Route path="/" element={<Home />} />
       <Route path="/book/:id" element={<BookDetail />} />
       <Route path="/filter" element={<BookFilter />} />
+      <Route path="/login" element={<Login />} />
+      <Route path="/favorites" element={<Favorites />} />
     </Routes>
   );
 }
