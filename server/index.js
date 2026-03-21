@@ -86,23 +86,37 @@ app.post("/api/register", async (req, res) => {
 
 //Favorite Books Post
 app.post("/api/favorite", auth, async (req, res) => {
+  // console.log("BODY:", req.body); // 👈 ADD THIS
 
-  const { bookId, title, thumbnail } = req.body;
+  try {
+    const { bookId, title, thumbnail, authors, categories } = req.body;
 
-  const user = await User.findById(req.userId);
+    const user = await User.findById(req.userId);
 
-  const exists = user.favorites.find(b => b.bookId === bookId);
+    // 🔒 Prevent duplicate
+    const exists = user.favorites.find(b => b.bookId === bookId);
+    if (exists) {
+      return res.json({ message: "Already saved" });
+    }
 
-  if (exists) {
-    return res.json({ message: "Already saved" });
+    // ✅ Push full metadata
+    user.favorites.push({
+      bookId,
+      title,
+      thumbnail,
+      authors: authors || [],
+      categories: categories || [],
+      addedAt: new Date()
+    });
+
+    await user.save();
+
+    res.json({ message: "Book saved ❤️" });
+
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ message: "Server error" });
   }
-
-  user.favorites.push({ bookId, title, thumbnail });
-
-  await user.save();
-
-  res.json({ message: "Book saved ❤️" });
-
 });
 
 //For Fetching 
@@ -208,6 +222,52 @@ app.post("/api/upload-book", upload.single("image"), async (req, res) => {
   } catch (error) {
     console.error("UPLOAD ERROR:", error.message);
     res.status(500).json({ error: "Failed to process image" });
+  }
+});
+
+//for recomendation
+app.get("/api/recommendations", auth, async (req, res) => {
+  try {
+    const user = await User.findById(req.userId);
+
+    let personalized = [];
+    let trending = [];
+
+    // 🔥 Personalized
+    if (user.favorites.length > 0) {
+      const categories = user.favorites.flatMap(b => b.categories);
+      const uniqueCategories = [...new Set(categories)];
+
+      const query = uniqueCategories
+        .slice(0, 3)
+        .map(cat => cat.split("/")[0].trim())
+        .join(" OR ");
+
+      const response = await axios.get(
+        `https://www.googleapis.com/books/v1/volumes?q=${query}&maxResults=6&key=${process.env.GOOGLE_BOOKS_KEY}`
+      );
+
+      personalized = response.data.items || [];
+      console.log("Personalized:", personalized.length);
+    }
+
+    // 📈 Trending (always fetch)
+    const trendingRes = await axios.get(
+      `https://www.googleapis.com/books/v1/volumes?q=popular books&maxResults=6&key=${process.env.GOOGLE_BOOKS_KEY}`
+    );
+
+    trending = trendingRes.data.items || [];
+
+    console.log("Trending:", trending.length);
+
+    res.json({
+      personalized,
+      trending
+    });
+
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ message: "Error fetching recommendations" });
   }
 });
 

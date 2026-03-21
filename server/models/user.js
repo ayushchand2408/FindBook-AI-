@@ -2,20 +2,20 @@ const mongoose = require("mongoose");
 
 const userSchema = new mongoose.Schema({
   name: String,
-  email: {
-    type: String,
-    unique: true
-  },
+  email: String,
   password: String,
-  createdAt: {
-    type: Date,
-    default: Date.now
-  },
-   favorites: [
+
+  favorites: [
     {
       bookId: String,
       title: String,
-      thumbnail: String
+      thumbnail: String,
+      authors: [String],      // ✅ ADD THIS
+      categories: [String],   // ✅ ADD THIS
+      addedAt: {
+        type: Date,
+        default: Date.now
+      }
     }
   ]
 });

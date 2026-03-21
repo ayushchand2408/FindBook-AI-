@@ -33,18 +33,28 @@ function Home() {
   const randomGenre = genres[Math.floor(Math.random() * genres.length)];
   const navigate = useNavigate();
   const token = localStorage.getItem("token");
+  
+
+  // "recommendation" | "search" | "upload"
+  const [mode, setMode] = useState("recommendation");
+  
 
   //fr pagination
   const [page, setPage] = useState(
     Number(searchParams.get("page")) || 0
   );
   const resultsPerPage = 10;
+  const [personalized, setPersonalized] = useState([]);
+  const [trending, setTrending] = useState([]);
+  const [detectedText, setDetectedText] = useState("");
 
+  //for search
   const handleSearch = () => {
     if (!searchQuery.trim()) return;
 
     setPage(0);
     setSubmittedQuery(searchQuery);
+    setMode("search"); // ADD
 
     setSearchParams({
       q: searchQuery,
@@ -53,7 +63,6 @@ function Home() {
   };
   //To add favorite books
   const saveBook = async (book) => {
-
     const token = localStorage.getItem("token");
 
     if (!token) {
@@ -61,22 +70,39 @@ function Home() {
       return;
     }
 
-    await fetch("http://localhost:5000/api/favorite", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        "Authorization": token
-      },
-      body: JSON.stringify({
-        bookId: book.id,
-        title: book.volumeInfo.title,
-        thumbnail: book.volumeInfo.imageLinks?.thumbnail
-      })
-    });
+    try {
+      // 🔥 Step 1: Get full book details
+      const res = await fetch(`http://localhost:5000/api/book/${book.id}`);
+      const fullBook = await res.json();
 
-    alert("Book saved ❤️");
+      console.log(fullBook.volumeInfo);
+      const info = fullBook.volumeInfo;
 
+      // 🔥 Step 2: Send enriched data
+      const response = await fetch("http://localhost:5000/api/favorite", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "Authorization": token
+        },
+        body: JSON.stringify({
+          bookId: book.id,
+          title: info.title,
+          thumbnail: info.imageLinks?.thumbnail || "",
+          authors: info.authors || [],
+          categories: info.categories || []
+        })
+      });
+
+      const data = await response.json();
+      alert(data.message);
+
+    } catch (err) {
+      console.error(err);
+      alert("Error saving book");
+    }
   };
+
   //Handle Upload Button
   const handleUpload = async () => {
     if (!selectedFile) return;
@@ -96,9 +122,10 @@ function Home() {
 
       console.log("Detected:", data.detectedText);
       console.log("Books:", data.books);
+      setDetectedText(data.detectedText || "");
 
-      setBooks(data.books); 
-      setSubmittedQuery(""); // clear manual search state
+      setBooks(data.books || []);
+      setMode("upload");   // ✅ clean switch
       setSearchParams({});
 
     } catch (error) {
@@ -122,14 +149,41 @@ function Home() {
     navigate(`/book/${randomBook.id}`);
   };
   
+  //for recommendation
   useEffect(() => {
-    if (!submittedQuery.trim()) {
-      setBooks([]);
-      return;
-    }
+    if (mode !== "recommendation") return;
+
+    const fetchRecommendations = async () => {
+      const token = localStorage.getItem("token");
+      if (!token) return;
+
+      try {
+        setLoading(true);
+
+        const res = await fetch("http://localhost:5000/api/recommendations", {
+          headers: { Authorization: token }
+        });
+
+        const data = await res.json();
+
+        setPersonalized(data.personalized || []);
+        setTrending(data.trending || []);
+
+      } catch (err) {
+        console.error(err);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchRecommendations();
+  }, [mode]);
+
+  //when no search
+  useEffect(() => {
+    if (mode !== "search") return;
 
     const fetchBooks = async () => {
-
       try {
         setLoading(true);
         setError("");
@@ -141,12 +195,7 @@ function Home() {
         const data = await res.json();
 
         setTotalItems(data.totalItems || 0);
-
-        if (data.totalItems === 0) {
-          setBooks([]);
-        } else {
-          setBooks(data.items || []);
-        }
+        setBooks(data.items || []);
 
       } catch (err) {
         setError("Something went wrong.");
@@ -156,7 +205,7 @@ function Home() {
     };
 
     fetchBooks();
-  }, [page, submittedQuery]);
+    }, [mode, page, submittedQuery]);
 
   return (
   <div>
@@ -229,50 +278,138 @@ function Home() {
 
     {/* Results Section */}
     <div className="results-container">
-      <h3>Results</h3>
+      <h3>
+        {mode === "search"
+          ? "🔍 Search Results"
+          : mode === "upload"
+            ? "📷 Detected Books"
+            : "📚 Recommendations"}
+      </h3>
+      {mode === "upload" && detectedText && (
+        <p style={{ marginBottom: "10px" }}>
+          🔍 Detected: <strong>{detectedText}</strong>
+        </p>
+      )}
 
       {loading && <p>Loading books...</p>}
       {error && <p style={{ color: "red" }}>{error}</p>}
 
-      {!loading && submittedQuery && books.length === 0 && !error && (
+      {mode === "search" && !loading  && books.length === 0 && !error && (
         <p style={{ fontSize: "18px", marginTop: "20px" }}>
           No books found for "<strong>{searchQuery}</strong>"
         </p>
       )}
 
       {/* Books Grid */}
-      <div className="book-grid">
-        {books.map((book) => (
-          <div key={book.id} className="book-card">
-            {book.volumeInfo.imageLinks?.thumbnail && (
-              <img
-                src={book.volumeInfo.imageLinks.thumbnail}
-                alt="cover"
-              />
-              
-            )}
-            
+      {/* 🔍 SEARCH RESULTS */}
+      {mode === "search" && (
+        <>
+          
+          <div className="book-grid">
+            {books.map((book) => {
+              const info = book.volumeInfo || book;
 
-            <Link
-              to={`/book/${book.id}`}
-              style={{ textDecoration: "none", color: "#111" }}
-            >
-              <h4>{book.volumeInfo.title}</h4>
-            </Link>
+              return (
+                <div key={book.id} className="book-card">
+                  {info.imageLinks?.thumbnail && (
+                    <img src={info.imageLinks.thumbnail} alt="cover" />
+                  )}
 
-            <p>{book.volumeInfo.authors?.join(", ")}</p>
-            <button
-              onClick={() => saveBook(book)}
-            >
-              ❤️ Save
-            </button>
+                  <Link to={`/book/${book.id}`}>
+                    <h4>{info.title}</h4>
+                  </Link>
+
+                  <p>{info.authors?.join(", ")}</p>
+
+                  <button onClick={() => saveBook(book)}>
+                    ❤️ Save
+                  </button>
+                </div>
+              );
+            })}
           </div>
-        ))}
+        </>
+      )}
+      {mode === "upload" && (
+        <div className="book-grid">
+          {books.map((book) => {
+            const info = book.volumeInfo || book;
 
-      </div>
+            return (
+              <div key={book.id} className="book-card">
+                {info.imageLinks?.thumbnail && (
+                  <img src={info.imageLinks.thumbnail} alt="cover" />
+                )}
+
+                <h4>{info.title}</h4>
+              </div>
+            );
+          })}
+        </div>
+      )}
+
+      {/*  PERSONALIZED */}
+      {mode === "recommendation" && personalized.length > 0 && (
+        <>
+          <h3>🔥 Recommended for You</h3>
+          <div className="book-grid">
+            {personalized.map((book) => {
+              const info = book.volumeInfo || book;
+
+              return (
+                <div key={book.id} className="book-card">
+                  {info.imageLinks?.thumbnail && (
+                    <img src={info.imageLinks.thumbnail} alt="cover" />
+                  )}
+
+                  <Link to={`/book/${book.id}`}>
+                    <h4>{info.title}</h4>
+                  </Link>
+
+                  <p>{info.authors?.join(", ")}</p>
+
+                  <button onClick={() => saveBook(book)}>
+                    ❤️ Save
+                  </button>
+                </div>
+              );
+            })}
+          </div>
+        </>
+      )}
+
+      {/*  TRENDING */}
+      {mode === "recommendation" && trending.length > 0 && (
+        <>
+          <h3>📈 Trending Books</h3>
+          <div className="book-grid">
+            {trending.map((book) => {
+              const info = book.volumeInfo || book;
+
+              return (
+                <div key={book.id} className="book-card">
+                  {info.imageLinks?.thumbnail && (
+                    <img src={info.imageLinks.thumbnail} alt="cover" />
+                  )}
+
+                  <Link to={`/book/${book.id}`}>
+                    <h4>{info.title}</h4>
+                  </Link>
+
+                  <p>{info.authors?.join(", ")}</p>
+
+                  <button onClick={() => saveBook(book)}>
+                    ❤️ Save
+                  </button>
+                </div>
+              );
+            })}
+          </div>
+        </>
+      )}
 
       {/* Pagination */}
-      {books.length > 0 && (
+      {mode === "search" && books.length > 0 && (
         <div className="pagination">
           <button
             disabled={page === 0}
