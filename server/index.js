@@ -271,6 +271,27 @@ app.get("/api/recommendations", auth, async (req, res) => {
   }
 });
 
+//to remove favorite books
+app.delete("/api/favorite/:bookId", auth, async (req, res) => {
+  try {
+    const { bookId } = req.params;
+
+    const user = await User.findById(req.userId);
+
+    user.favorites = user.favorites.filter(
+      (b) => b.bookId !== bookId
+    );
+
+    await user.save();
+
+    res.json({ message: "Removed from favorites ❌" });
+
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ message: "Error removing book" });
+  }
+});
+
 const PORT = 5000;
 
 app.listen(PORT, () => {

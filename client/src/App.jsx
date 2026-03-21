@@ -33,6 +33,11 @@ function Home() {
   const randomGenre = genres[Math.floor(Math.random() * genres.length)];
   const navigate = useNavigate();
   const token = localStorage.getItem("token");
+
+  const [favorites, setFavorites] = useState([]);
+  const isSaved = (bookId) => {
+    return favorites.some((b) => b.bookId === bookId);
+  };
   
 
   // "recommendation" | "search" | "upload"
@@ -62,7 +67,7 @@ function Home() {
     });
   };
   //To add favorite books
-  const saveBook = async (book) => {
+  const toggleFavorite = async (book) => {
     const token = localStorage.getItem("token");
 
     if (!token) {
@@ -71,35 +76,51 @@ function Home() {
     }
 
     try {
-      // 🔥 Step 1: Get full book details
-      const res = await fetch(`http://localhost:5000/api/book/${book.id}`);
-      const fullBook = await res.json();
+      if (isSaved(book.id)) {
+        // ❌ REMOVE
+        await fetch(`http://localhost:5000/api/favorite/${book.id}`, {
+          method: "DELETE",
+          headers: { Authorization: token }
+        });
 
-      console.log(fullBook.volumeInfo);
-      const info = fullBook.volumeInfo;
+        setFavorites((prev) =>
+          prev.filter((b) => b.bookId !== book.id)
+        );
 
-      // 🔥 Step 2: Send enriched data
-      const response = await fetch("http://localhost:5000/api/favorite", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          "Authorization": token
-        },
-        body: JSON.stringify({
-          bookId: book.id,
-          title: info.title,
-          thumbnail: info.imageLinks?.thumbnail || "",
-          authors: info.authors || [],
-          categories: info.categories || []
-        })
-      });
+      } else {
+        // ❤️ SAVE
+        const res = await fetch(`http://localhost:5000/api/book/${book.id}`);
+        const fullBook = await res.json();
+        const info = fullBook.volumeInfo;
 
-      const data = await response.json();
-      alert(data.message);
+        await fetch("http://localhost:5000/api/favorite", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            "Authorization": token
+          },
+          body: JSON.stringify({
+            bookId: book.id,
+            title: info.title,
+            thumbnail: info.imageLinks?.thumbnail || "",
+            authors: info.authors || [],
+            categories: info.categories || []
+          })
+        });
+
+        setFavorites((prev) => [
+          ...prev,
+          {
+            bookId: book.id,
+            title: info.title,
+            thumbnail: info.imageLinks?.thumbnail,
+            authors: info.authors
+          }
+        ]);
+      }
 
     } catch (err) {
       console.error(err);
-      alert("Error saving book");
     }
   };
 
@@ -148,7 +169,22 @@ function Home() {
 
     navigate(`/book/${randomBook.id}`);
   };
-  
+  //for check 
+  useEffect(() => {
+    const fetchFavorites = async () => {
+      const token = localStorage.getItem("token");
+      if (!token) return;
+
+      const res = await fetch("http://localhost:5000/api/favorites", {
+        headers: { Authorization: token }
+      });
+
+      const data = await res.json();
+      setFavorites(data);
+    };
+
+    fetchFavorites();
+  }, []);
   //for recommendation
   useEffect(() => {
     if (mode !== "recommendation") return;
@@ -311,6 +347,11 @@ function Home() {
 
               return (
                 <div key={book.id} className="book-card">
+                  {isSaved(book.id) && (
+                    <span style={{ color: "green", fontSize: "12px" }}>
+                      ✅ Saved
+                    </span>
+                  )}
                   {info.imageLinks?.thumbnail && (
                     <img src={info.imageLinks.thumbnail} alt="cover" />
                   )}
@@ -321,8 +362,8 @@ function Home() {
 
                   <p>{info.authors?.join(", ")}</p>
 
-                  <button onClick={() => saveBook(book)}>
-                    ❤️ Save
+                  <button onClick={() => toggleFavorite(book)}>
+                    {isSaved(book.id) ? "💔 Remove" : "❤️ Save"}
                   </button>
                 </div>
               );
@@ -368,8 +409,8 @@ function Home() {
 
                   <p>{info.authors?.join(", ")}</p>
 
-                  <button onClick={() => saveBook(book)}>
-                    ❤️ Save
+                  <button onClick={() => toggleFavorite(book)}>
+                    {isSaved(book.id) ? "💔 Remove" : "❤️ Save"}
                   </button>
                 </div>
               );
@@ -398,8 +439,8 @@ function Home() {
 
                   <p>{info.authors?.join(", ")}</p>
 
-                  <button onClick={() => saveBook(book)}>
-                    ❤️ Save
+                  <button onClick={() => toggleFavorite(book)}>
+                    {isSaved(book.id) ? "💔 Remove" : "❤️ Save"}
                   </button>
                 </div>
               );
