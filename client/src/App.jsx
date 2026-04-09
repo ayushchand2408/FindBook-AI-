@@ -308,81 +308,73 @@ function Home() {
     <div>
       {/* ---------------- NAVBAR ---------------- */}
       <nav className="navbar">
-        <h2 style={{ margin: 0 }}>FindBook AI 📚</h2>
+        <h2>FindBook AI 📚</h2>
 
-        {token && (
-          <Link to="/favorites">
-            <button>Favorites ❤️</button>
-          </Link>
-        )}
+        <div style={{ display: "flex", gap: "10px" }}>
+          {token && (
+            <Link to="/favorites">
+              <button>Favorites ❤️</button>
+            </Link>
+          )}
 
-        {!token && (
-          <Link to="/login">
-            <button>Login</button>
-          </Link>
-        )}
+          {!token && (
+            <Link to="/login">
+              <button>Login</button>
+            </Link>
+          )}
 
-        {token && (
-          <button
-            onClick={() => {
-              localStorage.removeItem("token");
-              navigate("/");
-              window.location.reload();
-            }}
-          >
-            Logout
-          </button>
-        )}
+          {token && (
+            <button
+              onClick={() => {
+                localStorage.removeItem("token");
+                navigate("/");
+                window.location.reload();
+              }}
+            >
+              Logout
+            </button>
+          )}
+        </div>
       </nav>
 
       {/* ---------------- MAIN ACTION CARDS ---------------- */}
       <div className="container">
+
         {/* SEARCH */}
         <div className="card">
-          <h3>Search Book by Name</h3>
+          <h3>🔍 Search by Name</h3>
           <input
             type="text"
             placeholder="Enter book name..."
             value={searchQuery}
-            onChange={(e) =>
-              setSearchQuery(e.target.value)
-            }
+            onChange={(e) => setSearchQuery(e.target.value)}
           />
-          <button onClick={getRandomBook}>
-            🎲 Surprise Me
-          </button>
-          <button onClick={handleSearch}>
-            Search
-          </button>
+          <div style={{ display: "flex", gap: "8px", justifyContent: "center" }}>
+            <button onClick={getRandomBook}>🎲 Surprise Me</button>
+            <button onClick={handleSearch}>Search</button>
+          </div>
         </div>
 
         {/* UPLOAD */}
         <div className="card">
-          <h3>Upload Book Image</h3>
+          <h3>📷 Upload Book Image</h3>
           <input
             type="file"
             accept="image/*"
-            onChange={(e) =>
-              setSelectedFile(e.target.files[0])
-            }
+            onChange={(e) => setSelectedFile(e.target.files[0])}
           />
-          <button onClick={handleUpload}>
-            Upload & Detect
-          </button>
+          <button onClick={handleUpload}>Upload & Detect</button>
         </div>
 
         {/* FILTER */}
         <div className="card">
-          <h3>Find Books by Preference</h3>
-          <p>
-            Don't know what to read? Use filters to
-            discover books.
-          </p>
-
+          <h3>🎯 Find by Preference</h3>
+          <p>Don't know what to read? Use filters to discover books.</p>
           <Link to="/filter">
             <button>Open Filters</button>
           </Link>
         </div>
+
       </div>
 
       {/* ---------------- RESULTS ---------------- */}
@@ -397,83 +389,47 @@ function Home() {
 
         {/* OCR detected text */}
         {mode === "upload" && detectedText && (
-          <p style={{ marginBottom: "10px" }}>
-            🔍 Detected:{" "}
-            <strong>{detectedText}</strong>
+          <p style={{ marginBottom: "16px", color: "#aaa", fontSize: "14px" }}>
+            🔍 Detected: <strong style={{ color: "#fff" }}>{detectedText}</strong>
           </p>
         )}
 
-        {loading && <p>Loading books...</p>}
-        {error && (
-          <p style={{ color: "red" }}>{error}</p>
-        )}
+        {loading && <p style={{ color: "#888" }}>Loading books...</p>}
+        {error && <p style={{ color: "#e05555" }}>{error}</p>}
 
         {/* Empty state */}
-        {mode === "search" &&
-          !loading &&
-          books.length === 0 &&
-          !error && (
-            <p
-              style={{
-                fontSize: "18px",
-                marginTop: "20px"
-              }}
-            >
-              No books found for "
-              <strong>{searchQuery}</strong>"
-            </p>
-          )}
+        {mode === "search" && !loading && books.length === 0 && !error && (
+          <p style={{ fontSize: "16px", color: "#666", marginTop: "20px" }}>
+            No books found for "<strong style={{ color: "#999" }}>{searchQuery}</strong>"
+          </p>
+        )}
 
         {/* ---------------- SEARCH RESULTS ---------------- */}
         {mode === "search" && (
           <div className="book-grid">
             {books.map((book) => {
-              const info =
-                book.volumeInfo || book;
+              const info = book.volumeInfo || book;
 
               return (
-                <div
-                  key={book.id}
-                  className="book-card"
-                >
+                <div key={book.id} className="book-card">
                   {isSaved(book.id) && (
-                    <span
-                      style={{
-                        color: "green",
-                        fontSize: "12px"
-                      }}
-                    >
+                    <span style={{ color: "#4caf50", fontSize: "11px", marginBottom: "6px" }}>
                       ✅ Saved
                     </span>
                   )}
 
                   {info.imageLinks?.thumbnail && (
-                    <img
-                      src={
-                        info.imageLinks.thumbnail
-                      }
-                      alt="cover"
-                    />
+                    <img src={info.imageLinks.thumbnail} alt="cover" />
                   )}
 
-                  <Link
-                    to={`/book/${book.id}`}
-                  >
+                  <Link to={`/book/${book.id}`}>
                     <h4>{info.title}</h4>
                   </Link>
 
-                  <p>
-                    {info.authors?.join(", ")}
-                  </p>
+                  <p>{info.authors?.join(", ")}</p>
 
-                  <button
-                    onClick={() =>
-                      toggleFavorite(book)
-                    }
-                  >
-                    {isSaved(book.id)
-                      ? "💔 Remove"
-                      : "❤️ Save"}
+                  <button onClick={() => toggleFavorite(book)}>
+                    {isSaved(book.id) ? "💔 Remove" : "❤️ Save"}
                   </button>
                 </div>
               );
@@ -485,23 +441,13 @@ function Home() {
         {mode === "upload" && (
           <div className="book-grid">
             {books.map((book) => {
-              const info =
-                book.volumeInfo || book;
+              const info = book.volumeInfo || book;
 
               return (
-                <div
-                  key={book.id}
-                  className="book-card"
-                >
+                <div key={book.id} className="book-card">
                   {info.imageLinks?.thumbnail && (
-                    <img
-                      src={
-                        info.imageLinks.thumbnail
-                      }
-                      alt="cover"
-                    />
+                    <img src={info.imageLinks.thumbnail} alt="cover" />
                   )}
-
                   <h4>{info.title}</h4>
                 </div>
               );
@@ -510,148 +456,93 @@ function Home() {
         )}
 
         {/* ---------------- RECOMMENDATIONS ---------------- */}
-        {mode === "recommendation" &&
-          personalized.length > 0 && (
-            <>
-              <h3>🔥 Recommended for You</h3>
-              <div className="book-grid">
-                {personalized.map((book) => {
-                  const info =
-                    book.volumeInfo || book;
+        {mode === "recommendation" && personalized.length > 0 && (
+          <>
+            <h3>🔥 Recommended for You</h3>
+            <div className="book-grid">
+              {personalized.map((book) => {
+                const info = book.volumeInfo || book;
 
-                  return (
-                    <div
-                      key={book.id}
-                      className="book-card"
-                    >
-                      {info.imageLinks
-                        ?.thumbnail && (
-                        <img
-                          src={
-                            info.imageLinks
-                              .thumbnail
-                          }
-                          alt="cover"
-                        />
-                      )}
+                return (
+                  <div key={book.id} className="book-card">
+                    {info.imageLinks?.thumbnail && (
+                      <img src={info.imageLinks.thumbnail} alt="cover" />
+                    )}
 
-                      <Link
-                        to={`/book/${book.id}`}
-                      >
-                        <h4>{info.title}</h4>
-                      </Link>
+                    <Link to={`/book/${book.id}`}>
+                      <h4>{info.title}</h4>
+                    </Link>
 
-                      <p>
-                        {info.authors?.join(", ")}
-                      </p>
+                    <p>{info.authors?.join(", ")}</p>
 
-                      <button
-                        onClick={() =>
-                          toggleFavorite(book)
-                        }
-                      >
-                        {isSaved(book.id)
-                          ? "💔 Remove"
-                          : "❤️ Save"}
-                      </button>
-                    </div>
-                  );
-                })}
-              </div>
-            </>
-          )}
+                    <button onClick={() => toggleFavorite(book)}>
+                      {isSaved(book.id) ? "💔 Remove" : "❤️ Save"}
+                    </button>
+                  </div>
+                );
+              })}
+            </div>
+          </>
+        )}
 
         {/* TRENDING */}
-        {mode === "recommendation" &&
-          trending.length > 0 && (
-            <>
-              <h3>📈 Trending Books</h3>
-              <div className="book-grid">
-                {trending.map((book) => {
-                  const info =
-                    book.volumeInfo || book;
+        {mode === "recommendation" && trending.length > 0 && (
+          <>
+            <h3>📈 Trending Books</h3>
+            <div className="book-grid">
+              {trending.map((book) => {
+                const info = book.volumeInfo || book;
 
-                  return (
-                    <div
-                      key={book.id}
-                      className="book-card"
-                    >
-                      {info.imageLinks
-                        ?.thumbnail && (
-                        <img
-                          src={
-                            info.imageLinks
-                              .thumbnail
-                          }
-                          alt="cover"
-                        />
-                      )}
+                return (
+                  <div key={book.id} className="book-card">
+                    {info.imageLinks?.thumbnail && (
+                      <img src={info.imageLinks.thumbnail} alt="cover" />
+                    )}
 
-                      <Link
-                        to={`/book/${book.id}`}
-                      >
-                        <h4>{info.title}</h4>
-                      </Link>
+                    <Link to={`/book/${book.id}`}>
+                      <h4>{info.title}</h4>
+                    </Link>
 
-                      <p>
-                        {info.authors?.join(", ")}
-                      </p>
+                    <p>{info.authors?.join(", ")}</p>
 
-                      <button
-                        onClick={() =>
-                          toggleFavorite(book)
-                        }
-                      >
-                        {isSaved(book.id)
-                          ? "💔 Remove"
-                          : "❤️ Save"}
-                      </button>
-                    </div>
-                  );
-                })}
-              </div>
-            </>
-          )}
+                    <button onClick={() => toggleFavorite(book)}>
+                      {isSaved(book.id) ? "💔 Remove" : "❤️ Save"}
+                    </button>
+                  </div>
+                );
+              })}
+            </div>
+          </>
+        )}
 
         {/* ---------------- PAGINATION ---------------- */}
-        {mode === "search" &&
-          books.length > 0 && (
-            <div className="pagination">
-              <button
-                disabled={page === 0}
-                onClick={() => {
-                  const newPage = page - 1;
-                  setPage(newPage);
-                  setSearchParams({
-                    q: searchQuery,
-                    page: newPage
-                  });
-                }}
-              >
-                Previous
-              </button>
+        {mode === "search" && books.length > 0 && (
+          <div className="pagination">
+            <button
+              disabled={page === 0}
+              onClick={() => {
+                const newPage = page - 1;
+                setPage(newPage);
+                setSearchParams({ q: searchQuery, page: newPage });
+              }}
+            >
+              ← Previous
+            </button>
 
-              <span>Page {page + 1}</span>
+            <span>Page {page + 1}</span>
 
-              <button
-                disabled={
-                  (page + 1) *
-                    resultsPerPage >=
-                  totalItems
-                }
-                onClick={() => {
-                  const newPage = page + 1;
-                  setPage(newPage);
-                  setSearchParams({
-                    q: searchQuery,
-                    page: newPage
-                  });
-                }}
-              >
-                Next
-              </button>
-            </div>
-          )}
+            <button
+              disabled={(page + 1) * resultsPerPage >= totalItems}
+              onClick={() => {
+                const newPage = page + 1;
+                setPage(newPage);
+                setSearchParams({ q: searchQuery, page: newPage });
+              }}
+            >
+              Next →
+            </button>
+          </div>
+        )}
       </div>
     </div>
   );
@@ -664,19 +555,10 @@ function App() {
   return (
     <Routes>
       <Route path="/" element={<Home />} />
-      <Route
-        path="/book/:id"
-        element={<BookDetail />}
-      />
-      <Route
-        path="/filter"
-        element={<BookFilter />}
-      />
+      <Route path="/book/:id" element={<BookDetail />} />
+      <Route path="/filter" element={<BookFilter />} />
       <Route path="/login" element={<Login />} />
-      <Route
-        path="/favorites"
-        element={<Favorites />}
-      />
+      <Route path="/favorites" element={<Favorites />} />
     </Routes>
   );
 }

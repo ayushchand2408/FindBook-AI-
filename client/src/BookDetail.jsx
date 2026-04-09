@@ -1,7 +1,7 @@
 // BookDetail page — fetches and displays full metadata for a single book.
 // The :id param is the Google Books volume ID passed from the search results.
 
-import { useNavigate , useParams } from "react-router-dom";
+import { useNavigate, useParams } from "react-router-dom";
 import { useEffect, useState } from "react";
 
 function BookDetail() {
@@ -25,7 +25,11 @@ function BookDetail() {
     fetchBook();
   }, [id]);
 
-  if (!book) return <h3 style={{ padding: "30px" }}>Loading...</h3>;
+  if (!book) return (
+    <div style={styles.page}>
+      <p style={styles.loading}>Loading...</p>
+    </div>
+  );
 
   const info = book.volumeInfo;
   const saleInfo = book.saleInfo;
@@ -61,93 +65,230 @@ function BookDetail() {
   // ── Render ───────────────────────────────────────────────────────────────────
 
   return (
-    <div style={{ padding: "40px" }}>
+    <div style={styles.page}>
 
-      {/* Back navigation */}
-      <button
-        onClick={() => navigate(-1)}
-        style={{
-          marginBottom: "20px",
-          padding: "8px 15px",
-          cursor: "pointer",
-          background: "#111",
-          color: "#fff",
-          border: "none",
-          borderRadius: "6px"
-        }}
-      >
+      {/* Back button */}
+      <button style={styles.backBtn} onClick={() => navigate(-1)}>
         ← Back to Results
       </button>
 
-      {/* Book title & cover */}
-      <h2>{info.title}</h2>
+      {/* ── Hero Section: cover + core info side by side ── */}
+      <div style={styles.hero}>
 
-      {info.imageLinks?.thumbnail && (
-        <img
-          src={info.imageLinks.thumbnail}
-          alt="cover"
-          style={{ margin: "20px 0" }}
-        />
-      )}
-
-      {/* Core metadata */}
-      <p><strong>Authors:</strong> {info.authors?.join(", ")}</p>
-      <p><strong>Publisher:</strong> {info.publisher}</p>
-      <p><strong>Published:</strong> {info.publishedDate}</p>
-      <p><strong>Pages:</strong> {info.pageCount}</p>
-
-      {/* Computed reading stats */}
-      <p>
-      <strong>Estimated Reading Time:</strong>{" "}
-      {info.pageCount ? `${hours} hr ${minutes} min` : "Unknown"}
-      </p>
-      <p>
-        <strong>Difficulty:</strong> {difficulty}
-      </p>
-
-      {/* Price — falls back to Amazon link if no Google Books price is available */}
-      <p> 
-        <strong>Price:</strong>{" "}
-        {saleInfo?.listPrice ? (
-          `${saleInfo.listPrice.amount} ${saleInfo.listPrice.currencyCode}`
-        ) : (
-          <a href={amazonLink} target="_blank" rel="noopener noreferrer">
-            Check on Amazon
-          </a>
+        {info.imageLinks?.thumbnail && (
+          <img
+            src={info.imageLinks.thumbnail}
+            alt="cover"
+            style={styles.cover}
+          />
         )}
-      </p>
 
-      {/* External links */}
-      <div className="book-links">
-        <h3>Find this Book</h3>
+        <div style={styles.heroInfo}>
+          <h2 style={styles.title}>{info.title}</h2>
 
-        <a href={amazonLink} target="_blank" rel="noopener noreferrer">
-          🛒 Buy on Amazon
-        </a>
+          <p style={styles.meta}><span style={styles.metaLabel}>Authors</span> {info.authors?.join(", ")}</p>
+          <p style={styles.meta}><span style={styles.metaLabel}>Publisher</span> {info.publisher}</p>
+          <p style={styles.meta}><span style={styles.metaLabel}>Published</span> {info.publishedDate}</p>
+          <p style={styles.meta}><span style={styles.metaLabel}>Pages</span> {info.pageCount}</p>
 
-        <br />
+          {/* Computed reading stats */}
+          <p style={styles.meta}>
+            <span style={styles.metaLabel}>Reading Time</span>
+            {info.pageCount ? `${hours} hr ${minutes} min` : "Unknown"}
+          </p>
+          <p style={styles.meta}>
+            <span style={styles.metaLabel}>Difficulty</span>
+            <span style={styles.badge}>{difficulty}</span>
+          </p>
 
-        <a href={googleLink} target="_blank" rel="noopener noreferrer">
-          🔎 Search on Google
-        </a>
+          {/* Price */}
+          <p style={styles.meta}>
+            <span style={styles.metaLabel}>Price</span>
+            {saleInfo?.listPrice ? (
+              `${saleInfo.listPrice.amount} ${saleInfo.listPrice.currencyCode}`
+            ) : (
+              <a href={amazonLink} target="_blank" rel="noopener noreferrer" style={styles.link}>
+                Check on Amazon
+              </a>
+            )}
+          </p>
+        </div>
 
-        <br />
-
-        {info.previewLink && (
-          <a href={info.previewLink} target="_blank" rel="noopener noreferrer">
-            📖 Read Preview on Google Books
-          </a>
-        )}
       </div>
 
-      {/* Description rendered as HTML — Google Books API returns markup here */}
-      <h2>Description</h2>
+      {/* ── Find this Book ── */}
+      <div style={styles.linksSection}>
+        <h3 style={styles.sectionTitle}>Find this Book</h3>
+        <div style={styles.linksRow}>
+          <a href={amazonLink} target="_blank" rel="noopener noreferrer" style={styles.linkBtn}>
+            🛒 Buy on Amazon
+          </a>
+          <a href={googleLink} target="_blank" rel="noopener noreferrer" style={styles.linkBtn}>
+            🔎 Search on Google
+          </a>
+          {info.previewLink && (
+            <a href={info.previewLink} target="_blank" rel="noopener noreferrer" style={styles.linkBtn}>
+              📖 Preview on Google Books
+            </a>
+          )}
+        </div>
+      </div>
+
+      {/* ── Description — rendered as HTML because the Google Books API returns markup ── */}
       {info.description && (
-        <div dangerouslySetInnerHTML={{ __html: info.description }} />
+        <div style={styles.descSection}>
+          <h3 style={styles.sectionTitle}>Description</h3>
+          <div
+            style={styles.description}
+            dangerouslySetInnerHTML={{ __html: info.description }}
+          />
+        </div>
       )}
 
     </div>
   );
 }
+
+// ── Styles ────────────────────────────────────────────────────────────────────
+
+const styles = {
+
+  page: {
+    minHeight: "100vh",
+    background: "#0f0f0f",
+    padding: "40px 48px 60px",
+    maxWidth: "860px",
+    margin: "0 auto",
+    color: "#f0f0f0",
+  },
+
+  loading: {
+    color: "#555",
+    fontSize: "16px",
+    marginTop: "40px",
+  },
+
+  backBtn: {
+    marginBottom: "32px",
+    padding: "8px 16px",
+    cursor: "pointer",
+    background: "transparent",
+    color: "#aaa",
+    border: "1px solid #333",
+    borderRadius: "8px",
+    fontSize: "14px",
+    transition: "background 0.2s, color 0.2s",
+  },
+
+  // Hero: cover image + metadata side by side
+  hero: {
+    display: "flex",
+    gap: "36px",
+    alignItems: "flex-start",
+    marginBottom: "40px",
+    padding: "28px",
+    background: "#1a1a1a",
+    border: "1px solid #2a2a2a",
+    borderRadius: "16px",
+  },
+
+  cover: {
+    width: "130px",
+    height: "190px",
+    objectFit: "cover",
+    borderRadius: "10px",
+    flexShrink: 0,
+    boxShadow: "0 8px 24px rgba(0,0,0,0.5)",
+  },
+
+  heroInfo: {
+    flex: 1,
+  },
+
+  title: {
+    margin: "0 0 20px",
+    fontSize: "22px",
+    fontWeight: "700",
+    color: "#fff",
+    lineHeight: "1.3",
+  },
+
+  meta: {
+    margin: "0 0 10px",
+    fontSize: "14px",
+    color: "#ccc",
+    display: "flex",
+    gap: "10px",
+    alignItems: "center",
+  },
+
+  metaLabel: {
+    minWidth: "110px",
+    fontSize: "12px",
+    fontWeight: "500",
+    color: "#555",
+    textTransform: "uppercase",
+    letterSpacing: "0.5px",
+  },
+
+  badge: {
+    padding: "2px 10px",
+    background: "#222",
+    border: "1px solid #333",
+    borderRadius: "20px",
+    fontSize: "12px",
+    color: "#aaa",
+  },
+
+  link: {
+    color: "#aaa",
+    textDecoration: "underline",
+    textUnderlineOffset: "3px",
+  },
+
+  // "Find this Book" links section
+  linksSection: {
+    marginBottom: "36px",
+  },
+
+  sectionTitle: {
+    fontSize: "18px",
+    fontWeight: "600",
+    color: "#f0f0f0",
+    margin: "0 0 16px",
+    paddingBottom: "10px",
+    borderBottom: "1px solid #222",
+  },
+
+  linksRow: {
+    display: "flex",
+    gap: "12px",
+    flexWrap: "wrap",
+  },
+
+  linkBtn: {
+    padding: "9px 16px",
+    background: "#1a1a1a",
+    border: "1px solid #2a2a2a",
+    borderRadius: "8px",
+    color: "#ccc",
+    fontSize: "14px",
+    textDecoration: "none",
+    transition: "border-color 0.2s, color 0.2s",
+  },
+
+  // Description section
+  descSection: {
+    marginTop: "8px",
+  },
+
+  description: {
+    fontSize: "15px",
+    color: "#999",
+    lineHeight: "1.8",
+    maxWidth: "720px",
+  },
+
+};
 
 export default BookDetail;

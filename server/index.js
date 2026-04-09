@@ -17,6 +17,24 @@ app.use(express.json());
 if (!fs.existsSync("uploads")) {
   fs.mkdirSync("uploads");
 }
+
+// ── Simple in-memory cache ────────────────────────────────────────────────────
+// Prevents hammering the Google Books API with the same queries repeatedly.
+// Cache entries expire after 10 minutes.
+
+const cache = {};
+const CACHE_TTL = 1000 * 60 * 10; // 10 minutes
+
+function getCached(key) {
+  const entry = cache[key];
+  if (!entry) return null;
+  if (Date.now() - entry.time > CACHE_TTL) return null;
+  return entry.data;
+}
+
+function setCache(key, data) {
+  cache[key] = { data, time: Date.now() };
+}
 mongoose.connect(process.env.MONGO_URI)
 .then(() => console.log("MongoDB connected"))
 .catch(err => console.log(err));
@@ -233,7 +251,7 @@ app.get("/api/recommendations", auth, async (req, res) => {
     let personalized = [];
     let trending = [];
 
-    // 🔥 Personalized
+    // 🔥 Personalized — only fetch if user has favorites
     if (user.favorites.length > 0) {
       const categories = user.favorites.flatMap(b => b.categories);
       const uniqueCategories = [...new Set(categories)];
@@ -243,22 +261,47 @@ app.get("/api/recommendations", auth, async (req, res) => {
         .map(cat => cat.split("/")[0].trim())
         .join(" OR ");
 
-      const response = await axios.get(
-        `https://www.googleapis.com/books/v1/volumes?q=${query}&maxResults=6&key=${process.env.GOOGLE_BOOKS_KEY}`
-      );
+      // Check cache before hitting Google API
+      const cacheKey = `personalized:${query}`;
+      const cachedPersonalized = getCached(cacheKey);
 
-      personalized = response.data.items || [];
-      console.log("Personalized:", personalized.length);
+      if (cachedPersonalized) {
+        personalized = cachedPersonalized;
+        console.log("Personalized (cached):", personalized.length);
+      } else {
+        try {
+          const response = await axios.get(
+            `https://www.googleapis.com/books/v1/volumes?q=${query}&maxResults=6&key=${process.env.GOOGLE_BOOKS_KEY}`
+          );
+          personalized = response.data.items || [];
+          setCache(cacheKey, personalized);
+          console.log("Personalized:", personalized.length);
+        } catch (err) {
+          // If Google API is down, return empty — don't crash the whole route
+          console.error("Personalized fetch failed:", err.message);
+        }
+      }
     }
 
-    // 📈 Trending (always fetch)
-    const trendingRes = await axios.get(
-      `https://www.googleapis.com/books/v1/volumes?q=popular books&maxResults=6&key=${process.env.GOOGLE_BOOKS_KEY}`
-    );
+    // 📈 Trending — check cache first
+    const trendingCached = getCached("trending");
 
-    trending = trendingRes.data.items || [];
-
-    console.log("Trending:", trending.length);
+    if (trendingCached) {
+      trending = trendingCached;
+      console.log("Trending (cached):", trending.length);
+    } else {
+      try {
+        const trendingRes = await axios.get(
+          `https://www.googleapis.com/books/v1/volumes?q=popular books&maxResults=6&key=${process.env.GOOGLE_BOOKS_KEY}`
+        );
+        trending = trendingRes.data.items || [];
+        setCache("trending", trending);
+        console.log("Trending:", trending.length);
+      } catch (err) {
+        // If Google API is down, return empty — don't crash the whole route
+        console.error("Trending fetch failed:", err.message);
+      }
+    }
 
     res.json({
       personalized,
@@ -267,7 +310,8 @@ app.get("/api/recommendations", auth, async (req, res) => {
 
   } catch (err) {
     console.error(err);
-    res.status(500).json({ message: "Error fetching recommendations" });
+    // Return empty arrays instead of 500 so the frontend doesn't break
+    res.json({ personalized: [], trending: [] });
   }
 });
 
