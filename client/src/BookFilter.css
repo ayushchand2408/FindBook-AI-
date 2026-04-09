@@ -1,4 +1,5 @@
-/* Page Background */
+/* ─── Page Layout ──────────────────────────────────────────────────────────── */
+
 .filter-page {
   min-height: 100vh;
   background: #313234;
@@ -10,7 +11,8 @@
   padding: 40px 20px;
 }
 
-/* Main Card */
+/* ─── Filter Card ──────────────────────────────────────────────────────────── */
+
 .filter-card {
   background: white;
   padding: 30px;
@@ -25,7 +27,8 @@
   color: #222;
 }
 
-/* Form Layout */
+/* ─── Form Layout ──────────────────────────────────────────────────────────── */
+
 .filter-form {
   display: flex;
   flex-direction: column;
@@ -39,7 +42,7 @@
   color: #333;
 }
 
-/* Inputs */
+/* Inputs & Selects */
 .filter-form input,
 .filter-form select {
   width: 100%;
@@ -56,7 +59,9 @@
   border-color: #4a90e2;
 }
 
-/* Checkbox Row */
+/* ─── Checkbox Row ─────────────────────────────────────────────────────────── */
+/* Keeps the checkbox and its label tightly aligned on one line. */
+
 .checkbox-row {
   display: flex;
   align-items: center;
@@ -64,7 +69,7 @@
 }
 
 .checkbox-row input {
-  width: auto;
+  width: auto;  /* override the 100% width set on regular inputs above */
   margin: 0;
 }
 
@@ -73,7 +78,8 @@
   font-size: 14px;
 }
 
-/* Buttons */
+/* ─── Action Buttons ───────────────────────────────────────────────────────── */
+
 .filter-buttons {
   display: flex;
   justify-content: space-between;
@@ -88,7 +94,7 @@
   font-size: 14px;
 }
 
-/* Primary Button */
+/* Primary action */
 .search-btn {
   background: #4a90e2;
   color: white;
@@ -98,7 +104,7 @@
   background: #357bd8;
 }
 
-/* Secondary Button */
+/* Secondary / back action */
 .back-btn {
   background: #1d1b1b;
 }
@@ -107,7 +113,8 @@
   background: #c9c9c9;
 }
 
-/* result container */
+/* ─── Results Container ────────────────────────────────────────────────────── */
+
 .results-container {
   width: 100%;
   max-width: 1000px;

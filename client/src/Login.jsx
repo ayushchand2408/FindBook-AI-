@@ -1,8 +1,13 @@
+// Login / Register screen.
+// Toggles between login and sign-up mode via `isLogin` state.
+// On successful login, saves the JWT to localStorage and redirects to home.
+
 import { useState } from "react";
 import {useNavigate } from "react-router-dom";
 
 function Login() {
 
+  // true = login mode | false = register mode
   const [isLogin, setIsLogin] = useState(true);
 
   const [name, setName] = useState("");
@@ -10,12 +15,16 @@ function Login() {
   const [password, setPassword] = useState("");
   const navigate = useNavigate();
 
+  // ── Submit handler ───────────────────────────────────────────────────────────
+  // Hits /api/login or /api/register depending on current mode.
+
   const handleSubmit = async () => {
 
     const url = isLogin
       ? "http://localhost:5000/api/login"
       : "http://localhost:5000/api/register";
 
+    // Register payload includes name; login does not
     const body = isLogin
       ? { email, password }
       : { name, email, password };
@@ -41,10 +50,12 @@ function Login() {
       navigate("/");
     } else {
       alert("Account created successfully 🎉");
-      setIsLogin(true);
+      setIsLogin(true); // switch back to login after successful registration
     }
 
   };
+
+  // ── Render ───────────────────────────────────────────────────────────────────
 
   return (
     <div style={styles.container}>
@@ -53,6 +64,7 @@ function Login() {
 
         <h2>{isLogin ? "Login" : "Create Account"}</h2>
 
+        {/* Name field — only visible during registration */}
         {!isLogin && (
           <input
             style={styles.input}
@@ -84,6 +96,7 @@ function Login() {
           {isLogin ? "Don't have an account?" : "Already have an account?"}
         </p>
 
+        {/* Toggle between login and register modes */}
         <button
           style={styles.switchBtn}
           onClick={() => setIsLogin(!isLogin)}
@@ -96,6 +109,8 @@ function Login() {
     </div>
   );
 }
+
+// ── Styles ────────────────────────────────────────────────────────────────────
 
 const styles = {
 

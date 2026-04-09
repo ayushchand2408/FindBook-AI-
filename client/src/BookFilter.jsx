@@ -1,6 +1,12 @@
+// BookFilter page — lets users discover books by genre, author, and publish year.
+// Sends a query to the backend, then filters results by year on the frontend
+// because the Google Books API does not support a native year filter parameter.
+
 import React, { useState } from "react";
 import "./BookFilter.css";
 import { useNavigate , Link } from "react-router-dom";
+
+// ── Static data ───────────────────────────────────────────────────────────────
 
 const genres = [
   "Romance",
@@ -18,6 +24,8 @@ const genres = [
   "Health"
 ];
 
+// ── Component ─────────────────────────────────────────────────────────────────
+
 const BookPreferenceSearch = () => {
 
   const navigate = useNavigate();
@@ -34,7 +42,9 @@ const BookPreferenceSearch = () => {
     order: "relevance",
   });
 
+  // ── Handlers ─────────────────────────────────────────────────────────────────
 
+  // Handles all input types including checkboxes
   const handleChange = (e) => {
     const { name, value, type, checked } = e.target;
 
@@ -77,7 +87,8 @@ const BookPreferenceSearch = () => {
 
         let results = data.items || [];
         console.log(data.items[0].volumeInfo.publishedDate);
-        // Filter by year on frontend
+
+        // Filter by year on the frontend
         if (filters.year) {
         results = results.filter((book) => {
             const publishedDate = book.volumeInfo?.publishedDate;
@@ -114,10 +125,15 @@ const BookPreferenceSearch = () => {
     }
     };
 
+  // Disable the submit button until at least one filter has a value
   const isDisabled = !filters.genre && !filters.author && !filters.year;
+
+  // ── Render ───────────────────────────────────────────────────────────────────
 
   return (
     <div className="filter-page">
+
+      {/* ── Filter Form ─────────────────────────────────────────────────────── */}
       <div className="filter-card">
         <h2>Find Books by Preference</h2>
 
@@ -144,7 +160,7 @@ const BookPreferenceSearch = () => {
             onChange={handleChange}
           />
 
-          {/* Published Year */}
+          {/* Published Year — filtered client-side after API response */}
           <label>Published Year</label>
           <select name="year" value={filters.year} onChange={handleChange}>
             <option value="">Any</option>
@@ -183,7 +199,9 @@ const BookPreferenceSearch = () => {
 
         </form>
       </div>
-        <div className="results-container">
+
+      {/* ── Results ─────────────────────────────────────────────────────────── */}
+      <div className="results-container">
 
         <h3>Results</h3>
 

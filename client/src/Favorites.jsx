@@ -1,8 +1,14 @@
+// Favorites page — shows all books the logged-in user has saved.
+// Fetches from the protected /api/favorites endpoint using the stored JWT.
+// Supports optimistic removal: the card disappears instantly on delete.
+
 import { useEffect, useState } from "react";
 
 function Favorites() {
 
   const [books, setBooks] = useState([]);
+
+  // ── Fetch favorites on mount ─────────────────────────────────────────────────
 
   useEffect(() => {
 
@@ -28,6 +34,9 @@ function Favorites() {
 
   }, []);
 
+  // ── Remove a book from favorites ─────────────────────────────────────────────
+  // Calls DELETE endpoint, then filters the book out of local state immediately.
+
   const removeFavorite = async (bookId) => {
     const token = localStorage.getItem("token");
 
@@ -46,6 +55,8 @@ function Favorites() {
       console.error("Remove failed", err);
     }
   };
+
+  // ── Render ───────────────────────────────────────────────────────────────────
 
   return (
     <div>
