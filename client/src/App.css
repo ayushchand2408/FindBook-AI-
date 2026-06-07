@@ -284,3 +284,66 @@ button:disabled {
   margin: 0 auto;
   padding: 0 20px;
 }
+
+/* ─── Mobile Responsive ────────────────────────────────────────────────────── */
+
+@media (max-width: 600px) {
+
+  .navbar {
+    padding: 12px 16px;
+  }
+
+  .navbar h2 {
+    font-size: 18px;
+  }
+
+  .container {
+    flex-direction: column;
+    align-items: center;
+    margin-top: 32px;
+    padding: 0 16px;
+    gap: 16px;
+  }
+
+  .card {
+    width: 100%;
+    box-sizing: border-box;
+    padding: 20px 16px;
+  }
+
+  .results-container {
+    padding: 0 16px;
+    margin: 32px auto 40px;
+  }
+
+  .book-grid {
+    grid-template-columns: repeat(2, 1fr);
+    gap: 14px;
+  }
+
+  .book-card img {
+    width: 90px;
+    height: 130px;
+  }
+
+  .book-card h4 {
+    font-size: 12px;
+  }
+
+  .pagination {
+    gap: 10px;
+  }
+
+  .pagination button {
+    padding: 6px 14px;
+    font-size: 13px;
+  }
+
+  input[type="text"],
+  input[type="email"],
+  input[type="password"],
+  select {
+    width: 100%;
+    box-sizing: border-box;
+  }
+}
