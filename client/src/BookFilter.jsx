@@ -24,9 +24,14 @@ const genres = [
   "Health"
 ];
 
+
+
 // ── Component ─────────────────────────────────────────────────────────────────
 
 const BookPreferenceSearch = () => {
+
+  
+  const BASE_URL = import.meta.env.VITE_API_BASE_URL;
 
   const navigate = useNavigate();
   const [books, setBooks] = useState([]);
@@ -80,7 +85,7 @@ const BookPreferenceSearch = () => {
         setLoading(true);
 
         const res = await fetch(
-        `http://localhost:5000/api/search?q=${encodeURIComponent(query)}`
+        `${BASE_URL}/api/search?q=${encodeURIComponent(query)}`
         );
 
         const data = await res.json();

@@ -7,6 +7,7 @@ import { useEffect, useState } from "react";
 function Favorites() {
 
   const [books, setBooks] = useState([]);
+  const BASE_URL = import.meta.env.VITE_API_BASE_URL;
 
   // ── Fetch favorites on mount ─────────────────────────────────────────────────
 
@@ -16,7 +17,7 @@ function Favorites() {
 
       const token = localStorage.getItem("token");
 
-      const res = await fetch("http://localhost:5000/api/favorites", {
+      const res = await fetch("${BASE_URL}/api/favorites", {
         headers: {
           Authorization: token
         }
@@ -41,7 +42,7 @@ function Favorites() {
     const token = localStorage.getItem("token");
 
     try {
-      await fetch(`http://localhost:5000/api/favorite/${bookId}`, {
+      await fetch(`${BASE_URL}/api/favorite/${bookId}`, {
         method: "DELETE",
         headers: {
           Authorization: token

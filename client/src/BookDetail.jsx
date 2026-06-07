@@ -8,13 +8,14 @@ function BookDetail() {
   const { id } = useParams();
   const navigate = useNavigate();
   const [book, setBook] = useState(null);
+  const BASE_URL = import.meta.env.VITE_API_BASE_URL;
 
   // ── Fetch book details on mount / id change ──────────────────────────────────
 
   useEffect(() => {
     const fetchBook = async () => {
       try {
-        const res = await fetch(`http://localhost:5000/api/book/${id}`);
+        const res = await fetch(`${BASE_URL}/api/book/${id}`);
         const data = await res.json();
         setBook(data);
       } catch (error) {

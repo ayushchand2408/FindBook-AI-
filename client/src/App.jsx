@@ -73,6 +73,8 @@ function Home() {
   const navigate = useNavigate();
   const token = localStorage.getItem("token");
 
+  const BASE_URL = import.meta.env.VITE_API_BASE_URL;
+
   /* -------------------- HELPERS -------------------- */
 
   // Check if a book is already saved
@@ -110,7 +112,7 @@ function Home() {
       // REMOVE from favorites
       if (isSaved(book.id)) {
         await fetch(
-          `http://localhost:5000/api/favorite/${book.id}`,
+          `${BASE_URL}/api/favorite/${book.id}`,
           {
             method: "DELETE",
             headers: { Authorization: token }
@@ -125,13 +127,13 @@ function Home() {
       else {
         // Fetch full book details
         const res = await fetch(
-          `http://localhost:5000/api/book/${book.id}`
+          `${BASE_URL}/api/book/${book.id}`
         );
         const fullBook = await res.json();
         const info = fullBook.volumeInfo;
 
         await fetch(
-          "http://localhost:5000/api/favorite",
+          `${BASE_URL}/api/favorite`,
           {
             method: "POST",
             headers: {
@@ -177,7 +179,7 @@ function Home() {
       setLoading(true);
 
       const res = await fetch(
-        "http://localhost:5000/api/upload-book",
+        `${BASE_URL}/api/upload-book`,
         {
           method: "POST",
           body: formData
@@ -209,7 +211,7 @@ function Home() {
     const randomIndex = Math.floor(Math.random() * 40);
 
     const res = await fetch(
-      `http://localhost:5000/api/search?q=${randomGenre}&startIndex=${randomIndex}`
+      `${BASE_URL}/api/search?q=${randomGenre}&startIndex=${randomIndex}`
     );
 
     const data = await res.json();
@@ -227,7 +229,7 @@ function Home() {
       if (!token) return;
 
       const res = await fetch(
-        "http://localhost:5000/api/favorites",
+        `${BASE_URL}/api/favorites`,
         {
           headers: { Authorization: token }
         }
@@ -252,7 +254,7 @@ function Home() {
         setLoading(true);
 
         const res = await fetch(
-          "http://localhost:5000/api/recommendations",
+          `${BASE_URL}/api/recommendations`,
           {
             headers: { Authorization: token }
           }
@@ -282,7 +284,7 @@ function Home() {
         setError("");
 
         const res = await fetch(
-          `http://localhost:5000/api/search?q=${submittedQuery}&startIndex=${
+          `${BASE_URL}/api/search?q=${submittedQuery}&startIndex=${
             page * resultsPerPage
           }`
         );
