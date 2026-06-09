@@ -5,7 +5,7 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 
-function Login() {
+function Login({ onLogin }) {
 
   const [isLogin, setIsLogin] = useState(true);
   const [name, setName] = useState("");
@@ -58,6 +58,7 @@ function Login() {
       if (isLogin) {
         // No localStorage — cookie is already set by the server automatically
         alert("Login successful 🎉");
+        onLogin();
         navigate("/");
       } else {
         alert("Account created successfully 🎉");

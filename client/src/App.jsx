@@ -17,7 +17,7 @@ import "./App.css";
 /* =========================================================
    HOME COMPONENT
    ========================================================= */
-function Home() {
+function Home({ isLoggedIn, setIsLoggedIn }) {
 
   /* -------------------- STATIC DATA -------------------- */
   const genres = [
@@ -48,7 +48,7 @@ function Home() {
   const [trending, setTrending] = useState([]);
 
   // Replaces localStorage token check — tracks login state properly
-  const [isLoggedIn, setIsLoggedIn] = useState(false);
+  
 
   const resultsPerPage = 10;
   const navigate = useNavigate();
@@ -82,7 +82,7 @@ function Home() {
     };
 
     checkAuth();
-  }, []);
+  },  [isLoggedIn]);
 
   /* -------------------- SEARCH -------------------- */
 
@@ -531,12 +531,13 @@ function Home() {
    APP ROUTES
    ========================================================= */
 function App() {
+  const [isLoggedIn, setIsLoggedIn] = useState(false); // move it here
   return (
     <Routes>
-      <Route path="/" element={<Home />} />
+      <Route path="/" element={<Home isLoggedIn={isLoggedIn} setIsLoggedIn={setIsLoggedIn} />} />
       <Route path="/book/:id" element={<BookDetail />} />
       <Route path="/filter" element={<BookFilter />} />
-      <Route path="/login" element={<Login />} />
+      <Route path="/login" element={<Login onLogin={() => setIsLoggedIn(true)} />} />
       <Route path="/favorites" element={<Favorites />} />
     </Routes>
   );
