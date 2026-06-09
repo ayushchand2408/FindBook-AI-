@@ -1,18 +1,17 @@
 // Login / Register screen.
 // Toggles between login and sign-up mode via `isLogin` state.
-// On successful login, saves the JWT to localStorage and redirects to home.
+// On successful login, cookie is set by server automatically — no localStorage needed.
 
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 
 function Login() {
 
-  // true = login mode | false = register mode
   const [isLogin, setIsLogin] = useState(true);
-
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [loading, setLoading] = useState(false); // prevent double submit
   const navigate = useNavigate();
 
   const BASE_URL = import.meta.env.VITE_API_BASE_URL;
@@ -20,6 +19,16 @@ function Login() {
   // ── Submit handler ───────────────────────────────────────────────────────────
 
   const handleSubmit = async () => {
+    // Basic validation
+    if (!email || !password) {
+      alert("Please fill in all fields");
+      return;
+    }
+
+    if (!isLogin && !name) {
+      alert("Please enter your name");
+      return;
+    }
 
     const url = isLogin
       ? `${BASE_URL}/api/login`
@@ -29,26 +38,37 @@ function Login() {
       ? { email, password }
       : { name, email, password };
 
-    const res = await fetch(url, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(body)
-    });
+    try {
+      setLoading(true);
 
-    const data = await res.json();
+      const res = await fetch(url, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include", // required so browser stores the cookie the server sets
+        body: JSON.stringify(body)
+      });
 
-    if (!res.ok) {
-      alert(data.error || "Something went wrong");
-      return;
-    }
+      const data = await res.json();
 
-    if (isLogin) {
-      localStorage.setItem("token", data.token);
-      alert("Login successful 🎉");
-      navigate("/");
-    } else {
-      alert("Account created successfully 🎉");
-      setIsLogin(true);
+      if (!res.ok) {
+        alert(data.error || "Something went wrong");
+        return;
+      }
+
+      if (isLogin) {
+        // No localStorage — cookie is already set by the server automatically
+        alert("Login successful 🎉");
+        navigate("/");
+      } else {
+        alert("Account created successfully 🎉");
+        setIsLogin(true);
+      }
+
+    } catch (err) {
+      console.error("Auth error:", err);
+      alert("Network error, please try again");
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -81,6 +101,7 @@ function Login() {
               style={styles.input}
               type="text"
               placeholder="Your name"
+              value={name}
               onChange={(e) => setName(e.target.value)}
             />
           </div>
@@ -92,6 +113,7 @@ function Login() {
             style={styles.input}
             type="email"
             placeholder="you@example.com"
+            value={email}
             onChange={(e) => setEmail(e.target.value)}
           />
         </div>
@@ -102,12 +124,17 @@ function Login() {
             style={styles.input}
             type="password"
             placeholder="••••••••"
+            value={password}
             onChange={(e) => setPassword(e.target.value)}
           />
         </div>
 
-        <button style={styles.button} onClick={handleSubmit}>
-          {isLogin ? "Login" : "Sign Up"}
+        <button
+          style={{ ...styles.button, opacity: loading ? 0.6 : 1 }}
+          onClick={handleSubmit}
+          disabled={loading}
+        >
+          {loading ? "Please wait..." : isLogin ? "Login" : "Sign Up"}
         </button>
 
         {/* Divider */}
@@ -155,7 +182,6 @@ const styles = {
     flexDirection: "column",
   },
 
-  // Branding at top of card
   brand: {
     display: "flex",
     alignItems: "center",

@@ -1,34 +1,51 @@
 // Favorites page — shows all books the logged-in user has saved.
-// Fetches from the protected /api/favorites endpoint using the stored JWT.
+// Fetches from the protected /api/favorites endpoint using HttpOnly cookie.
 // Supports optimistic removal: the card disappears instantly on delete.
 
 import { useEffect, useState } from "react";
+import { useNavigate } from "react-router-dom";
 
 function Favorites() {
 
   const [books, setBooks] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState("");
   const BASE_URL = import.meta.env.VITE_API_BASE_URL;
+  const navigate = useNavigate();
 
   // ── Fetch favorites on mount ─────────────────────────────────────────────────
 
   useEffect(() => {
 
     const fetchFavorites = async () => {
+      try {
+        setLoading(true);
+        setError("");
 
-      const token = localStorage.getItem("token");
+        const res = await fetch(`${BASE_URL}/api/favorites`, {
+          credentials: "include" // sends cookie automatically, no token needed
+        });
 
-      const res = await fetch("${BASE_URL}/api/favorites", {
-        headers: {
-          Authorization: token
+        // If cookie is missing or expired, redirect to login
+        if (res.status === 401) {
+          navigate("/login");
+          return;
         }
-      });
 
-      const data = await res.json();
+        if (!res.ok) {
+          setError("Failed to load favorites");
+          return;
+        }
 
-      console.log("Favorites:", data); // 🔴 IMPORTANT DEBUG
+        const data = await res.json();
+        setBooks(data);
 
-      setBooks(data);
-
+      } catch (err) {
+        console.error("Fetch favorites failed:", err);
+        setError("Something went wrong, please try again");
+      } finally {
+        setLoading(false);
+      }
     };
 
     fetchFavorites();
@@ -36,24 +53,24 @@ function Favorites() {
   }, []);
 
   // ── Remove a book from favorites ─────────────────────────────────────────────
-  // Calls DELETE endpoint, then filters the book out of local state immediately.
 
   const removeFavorite = async (bookId) => {
-    const token = localStorage.getItem("token");
-
     try {
-      await fetch(`${BASE_URL}/api/favorite/${bookId}`, {
+      const res = await fetch(`${BASE_URL}/api/favorite/${bookId}`, {
         method: "DELETE",
-        headers: {
-          Authorization: token
-        }
+        credentials: "include" // sends cookie automatically
       });
 
-      // ✅ update UI instantly
+      if (!res.ok) {
+        console.error("Remove failed with status:", res.status);
+        return;
+      }
+
+      // Update UI instantly
       setBooks((prev) => prev.filter((b) => b.bookId !== bookId));
 
     } catch (err) {
-      console.error("Remove failed", err);
+      console.error("Remove failed:", err);
     }
   };
 
@@ -72,8 +89,22 @@ function Favorites() {
         </p>
       </div>
 
+      {/* Loading state */}
+      {loading && (
+        <p style={{ color: "#888", textAlign: "center", marginTop: "60px" }}>
+          Loading your books...
+        </p>
+      )}
+
+      {/* Error state */}
+      {error && (
+        <p style={{ color: "#e05555", textAlign: "center", marginTop: "60px" }}>
+          {error}
+        </p>
+      )}
+
       {/* Empty state */}
-      {books.length === 0 && (
+      {!loading && !error && books.length === 0 && (
         <div style={styles.emptyState}>
           <div style={styles.emptyIcon}>📭</div>
           <p style={styles.emptyText}>You haven't saved any books yet.</p>
@@ -82,34 +113,36 @@ function Favorites() {
       )}
 
       {/* Book grid */}
-      <div style={styles.grid}>
-        {books.map((book) => (
-          <div key={book.bookId} style={styles.card}>
+      {!loading && !error && (
+        <div style={styles.grid}>
+          {books.map((book) => (
+            <div key={book.bookId} style={styles.card}>
 
-            {/* Cover */}
-            <img
-              src={book.thumbnail}
-              width="80"
-              alt={book.title}
-              style={styles.cover}
-            />
+              {/* Cover */}
+              <img
+                src={book.thumbnail}
+                width="80"
+                alt={book.title}
+                style={styles.cover}
+              />
 
-            {/* Info */}
-            <div style={styles.info}>
-              <p style={styles.title}>{book.title}</p>
+              {/* Info */}
+              <div style={styles.info}>
+                <p style={styles.title}>{book.title}</p>
+              </div>
+
+              {/* Remove button */}
+              <button
+                style={styles.removeBtn}
+                onClick={() => removeFavorite(book.bookId)}
+              >
+                ❌ Remove
+              </button>
+
             </div>
-
-            {/* Remove button */}
-            <button
-              style={styles.removeBtn}
-              onClick={() => removeFavorite(book.bookId)}
-            >
-              ❌ Remove
-            </button>
-
-          </div>
-        ))}
-      </div>
+          ))}
+        </div>
+      )}
 
     </div>
   );
@@ -147,7 +180,6 @@ const styles = {
     color: "#555",
   },
 
-  // Empty state
   emptyState: {
     display: "flex",
     flexDirection: "column",
@@ -174,7 +206,6 @@ const styles = {
     color: "#444",
   },
 
-  // Grid layout for book cards
   grid: {
     display: "grid",
     gridTemplateColumns: "repeat(auto-fill, minmax(260px, 1fr))",
