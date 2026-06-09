@@ -16,142 +16,139 @@ import "./App.css";
 
 /* =========================================================
    HOME COMPONENT
-   Handles:
-   - Search
-   - Upload (OCR-based detection)
-   - Recommendations (personalized + trending)
-   - Favorites (add/remove)
    ========================================================= */
 function Home() {
+
   /* -------------------- STATIC DATA -------------------- */
   const genres = [
-    "fiction",
-    "science",
-    "history",
-    "technology",
-    "romance",
-    "mystery",
-    "self-help"
+    "fiction", "science", "history", "technology",
+    "romance", "mystery", "self-help"
   ];
 
-  const randomGenre =
-    genres[Math.floor(Math.random() * genres.length)];
+  const randomGenre = genres[Math.floor(Math.random() * genres.length)];
 
   /* -------------------- STATE -------------------- */
   const [books, setBooks] = useState([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
 
-  // File upload
   const [selectedFile, setSelectedFile] = useState(null);
   const [detectedText, setDetectedText] = useState("");
 
-  // Search + pagination
   const [searchParams, setSearchParams] = useSearchParams();
-  const [searchQuery, setSearchQuery] = useState(
-    searchParams.get("q") || ""
-  );
-  const [submittedQuery, setSubmittedQuery] = useState(
-    searchParams.get("q") || ""
-  );
-  const [page, setPage] = useState(
-    Number(searchParams.get("page")) || 0
-  );
+  const [searchQuery, setSearchQuery] = useState(searchParams.get("q") || "");
+  const [submittedQuery, setSubmittedQuery] = useState(searchParams.get("q") || "");
+  const [page, setPage] = useState(Number(searchParams.get("page")) || 0);
   const [totalItems, setTotalItems] = useState(0);
 
-  // Modes: recommendation | search | upload
   const [mode, setMode] = useState("recommendation");
 
-  // Favorites
   const [favorites, setFavorites] = useState([]);
-
-  // Recommendations
   const [personalized, setPersonalized] = useState([]);
   const [trending, setTrending] = useState([]);
 
+  // Replaces localStorage token check — tracks login state properly
+  const [isLoggedIn, setIsLoggedIn] = useState(false);
+
   const resultsPerPage = 10;
   const navigate = useNavigate();
-  const token = localStorage.getItem("token");
-
   const BASE_URL = import.meta.env.VITE_API_BASE_URL;
 
   /* -------------------- HELPERS -------------------- */
 
-  // Check if a book is already saved
-  const isSaved = (bookId) => {
-    return favorites.some((b) => b.bookId === bookId);
-  };
+  const isSaved = (bookId) => favorites.some((b) => b.bookId === bookId);
+
+  /* -------------------- AUTH CHECK ON MOUNT -------------------- */
+  // Pings a protected route to see if cookie is valid
+  // No token reading, no localStorage — purely cookie-based
+
+  useEffect(() => {
+    const checkAuth = async () => {
+      try {
+        const res = await fetch(`${BASE_URL}/api/favorites`, {
+          credentials: "include"
+        });
+        if (res.ok) {
+          setIsLoggedIn(true);
+          const data = await res.json();
+          setFavorites(data);
+        } else {
+          setIsLoggedIn(false);
+        }
+      } catch (err) {
+        console.error("Auth check failed:", err);
+        setIsLoggedIn(false);
+      }
+    };
+
+    checkAuth();
+  }, []);
 
   /* -------------------- SEARCH -------------------- */
 
   const handleSearch = () => {
     if (!searchQuery.trim()) return;
-
     setPage(0);
     setSubmittedQuery(searchQuery);
     setMode("search");
-
-    // Sync query with URL
-    setSearchParams({
-      q: searchQuery,
-      page: 0
-    });
+    setSearchParams({ q: searchQuery, page: 0 });
   };
 
   /* -------------------- FAVORITES -------------------- */
 
   const toggleFavorite = async (book) => {
-    const token = localStorage.getItem("token");
-
-    if (!token) {
+    if (!isLoggedIn) {
       alert("Please login first");
       return;
     }
 
     try {
-      // REMOVE from favorites
       if (isSaved(book.id)) {
-        await fetch(
-          `${BASE_URL}/api/favorite/${book.id}`,
-          {
-            method: "DELETE",
-            headers: { Authorization: token }
-          }
-        );
+        // REMOVE
+        const res = await fetch(`${BASE_URL}/api/favorite/${book.id}`, {
+          method: "DELETE",
+          credentials: "include"
+        });
 
-        setFavorites((prev) =>
-          prev.filter((b) => b.bookId !== book.id)
-        );
-      }
-      // ADD to favorites
-      else {
-        // Fetch full book details
-        const res = await fetch(
-          `${BASE_URL}/api/book/${book.id}`
-        );
+        if (!res.ok) {
+          console.error("Remove failed:", res.status);
+          return;
+        }
+
+        setFavorites((prev) => prev.filter((b) => b.bookId !== book.id));
+
+      } else {
+        // ADD — fetch full book details first
+        const res = await fetch(`${BASE_URL}/api/book/${book.id}`, {
+          credentials: "include"
+        });
+
+        if (!res.ok) {
+          console.error("Book fetch failed:", res.status);
+          return;
+        }
+
         const fullBook = await res.json();
         const info = fullBook.volumeInfo;
 
-        await fetch(
-          `${BASE_URL}/api/favorite`,
-          {
-            method: "POST",
-            headers: {
-              "Content-Type": "application/json",
-              Authorization: token
-            },
-            body: JSON.stringify({
-              bookId: book.id,
-              title: info.title,
-              thumbnail:
-                info.imageLinks?.thumbnail || "",
-              authors: info.authors || [],
-              categories: info.categories || []
-            })
-          }
-        );
+        const saveRes = await fetch(`${BASE_URL}/api/favorite`, {
+          method: "POST",
+          credentials: "include",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            bookId: book.id,
+            title: info.title,
+            thumbnail: info.imageLinks?.thumbnail || "",
+            authors: info.authors || [],
+            categories: info.categories || []
+          })
+        });
 
-        // Update local state
+        if (!saveRes.ok) {
+          console.error("Save failed:", saveRes.status);
+          return;
+        }
+
         setFavorites((prev) => [
           ...prev,
           {
@@ -163,7 +160,7 @@ function Home() {
         ]);
       }
     } catch (err) {
-      console.error(err);
+      console.error("Toggle favorite failed:", err);
     }
   };
 
@@ -178,25 +175,24 @@ function Home() {
     try {
       setLoading(true);
 
-      const res = await fetch(
-        `${BASE_URL}/api/upload-book`,
-        {
-          method: "POST",
-          body: formData
-        }
-      );
+      const res = await fetch(`${BASE_URL}/api/upload-book`, {
+        method: "POST",
+        credentials: "include",
+        body: formData
+      });
+
+      if (!res.ok) {
+        alert("Image upload failed");
+        return;
+      }
 
       const data = await res.json();
 
-      console.log("Detected:", data.detectedText);
-      console.log("Books:", data.books);
-
       setDetectedText(data.detectedText || "");
       setBooks(data.books || []);
-
-      // Switch UI mode
       setMode("upload");
       setSearchParams({});
+
     } catch (error) {
       console.error("Upload failed:", error);
       alert("Image upload failed");
@@ -208,71 +204,71 @@ function Home() {
   /* -------------------- RANDOM BOOK -------------------- */
 
   const getRandomBook = async () => {
-    const randomIndex = Math.floor(Math.random() * 40);
+    try {
+      const randomIndex = Math.floor(Math.random() * 40);
 
-    const res = await fetch(
-      `${BASE_URL}/api/search?q=${randomGenre}&startIndex=${randomIndex}`
-    );
+      const res = await fetch(
+        `${BASE_URL}/api/search?q=${randomGenre}&startIndex=${randomIndex}`,
+        { credentials: "include" }
+      );
 
-    const data = await res.json();
-    const randomBook = data.items[0];
+      if (!res.ok) return;
 
-    navigate(`/book/${randomBook.id}`);
+      const data = await res.json();
+      if (!data.items?.length) return;
+
+      navigate(`/book/${data.items[0].id}`);
+    } catch (err) {
+      console.error("Random book failed:", err);
+    }
+  };
+
+  /* -------------------- LOGOUT -------------------- */
+
+  const handleLogout = async () => {
+    try {
+      await fetch(`${BASE_URL}/api/logout`, {
+        method: "POST",
+        credentials: "include"
+      });
+    } catch (err) {
+      console.error("Logout failed:", err);
+    }
+
+    setIsLoggedIn(false);
+    setFavorites([]);
+    navigate("/");
   };
 
   /* -------------------- EFFECTS -------------------- */
 
-  // Fetch favorites on mount
+  // Fetch recommendations when in recommendation mode
   useEffect(() => {
-    const fetchFavorites = async () => {
-      const token = localStorage.getItem("token");
-      if (!token) return;
-
-      const res = await fetch(
-        `${BASE_URL}/api/favorites`,
-        {
-          headers: { Authorization: token }
-        }
-      );
-
-      const data = await res.json();
-      setFavorites(data);
-    };
-
-    fetchFavorites();
-  }, []);
-
-  // Fetch recommendations
-  useEffect(() => {
-    if (mode !== "recommendation") return;
+    if (mode !== "recommendation" || !isLoggedIn) return;
 
     const fetchRecommendations = async () => {
-      const token = localStorage.getItem("token");
-      if (!token) return;
-
       try {
         setLoading(true);
 
-        const res = await fetch(
-          `${BASE_URL}/api/recommendations`,
-          {
-            headers: { Authorization: token }
-          }
-        );
+        const res = await fetch(`${BASE_URL}/api/recommendations`, {
+          credentials: "include"
+        });
+
+        if (!res.ok) return;
 
         const data = await res.json();
-
         setPersonalized(data.personalized || []);
         setTrending(data.trending || []);
+
       } catch (err) {
-        console.error(err);
+        console.error("Recommendations failed:", err);
       } finally {
         setLoading(false);
       }
     };
 
     fetchRecommendations();
-  }, [mode]);
+  }, [mode, isLoggedIn]);
 
   // Fetch search results
   useEffect(() => {
@@ -284,15 +280,19 @@ function Home() {
         setError("");
 
         const res = await fetch(
-          `${BASE_URL}/api/search?q=${submittedQuery}&startIndex=${
-            page * resultsPerPage
-          }`
+          `${BASE_URL}/api/search?q=${submittedQuery}&startIndex=${page * resultsPerPage}`,
+          { credentials: "include" }
         );
 
-        const data = await res.json();
+        if (!res.ok) {
+          setError("Something went wrong.");
+          return;
+        }
 
+        const data = await res.json();
         setTotalItems(data.totalItems || 0);
         setBooks(data.items || []);
+
       } catch (err) {
         setError("Something went wrong.");
       } finally {
@@ -313,26 +313,20 @@ function Home() {
         <h2>FindBook AI 📚</h2>
 
         <div style={{ display: "flex", gap: "10px" }}>
-          {token && (
+          {isLoggedIn && (
             <Link to="/favorites">
               <button>Favorites ❤️</button>
             </Link>
           )}
 
-          {!token && (
+          {!isLoggedIn && (
             <Link to="/login">
               <button>Login</button>
             </Link>
           )}
 
-          {token && (
-            <button
-              onClick={() => {
-                localStorage.removeItem("token");
-                navigate("/");
-                window.location.reload();
-              }}
-            >
+          {isLoggedIn && (
+            <button onClick={handleLogout}>
               Logout
             </button>
           )}
@@ -350,6 +344,7 @@ function Home() {
             placeholder="Enter book name..."
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
+            onKeyDown={(e) => e.key === "Enter" && handleSearch()}
           />
           <div style={{ display: "flex", gap: "8px", justifyContent: "center" }}>
             <button onClick={getRandomBook}>🎲 Surprise Me</button>
@@ -389,7 +384,6 @@ function Home() {
             : "📚 Recommendations"}
         </h3>
 
-        {/* OCR detected text */}
         {mode === "upload" && detectedText && (
           <p style={{ marginBottom: "16px", color: "#aaa", fontSize: "14px" }}>
             🔍 Detected: <strong style={{ color: "#fff" }}>{detectedText}</strong>
@@ -399,7 +393,6 @@ function Home() {
         {loading && <p style={{ color: "#888" }}>Loading books...</p>}
         {error && <p style={{ color: "#e05555" }}>{error}</p>}
 
-        {/* Empty state */}
         {mode === "search" && !loading && books.length === 0 && !error && (
           <p style={{ fontSize: "16px", color: "#666", marginTop: "20px" }}>
             No books found for "<strong style={{ color: "#999" }}>{searchQuery}</strong>"
@@ -411,7 +404,6 @@ function Home() {
           <div className="book-grid">
             {books.map((book) => {
               const info = book.volumeInfo || book;
-
               return (
                 <div key={book.id} className="book-card">
                   {isSaved(book.id) && (
@@ -419,17 +411,13 @@ function Home() {
                       ✅ Saved
                     </span>
                   )}
-
                   {info.imageLinks?.thumbnail && (
                     <img src={info.imageLinks.thumbnail} alt="cover" />
                   )}
-
                   <Link to={`/book/${book.id}`}>
                     <h4>{info.title}</h4>
                   </Link>
-
                   <p>{info.authors?.join(", ")}</p>
-
                   <button onClick={() => toggleFavorite(book)}>
                     {isSaved(book.id) ? "💔 Remove" : "❤️ Save"}
                   </button>
@@ -444,7 +432,6 @@ function Home() {
           <div className="book-grid">
             {books.map((book) => {
               const info = book.volumeInfo || book;
-
               return (
                 <div key={book.id} className="book-card">
                   {info.imageLinks?.thumbnail && (
@@ -464,19 +451,15 @@ function Home() {
             <div className="book-grid">
               {personalized.map((book) => {
                 const info = book.volumeInfo || book;
-
                 return (
                   <div key={book.id} className="book-card">
                     {info.imageLinks?.thumbnail && (
                       <img src={info.imageLinks.thumbnail} alt="cover" />
                     )}
-
                     <Link to={`/book/${book.id}`}>
                       <h4>{info.title}</h4>
                     </Link>
-
                     <p>{info.authors?.join(", ")}</p>
-
                     <button onClick={() => toggleFavorite(book)}>
                       {isSaved(book.id) ? "💔 Remove" : "❤️ Save"}
                     </button>
@@ -494,19 +477,15 @@ function Home() {
             <div className="book-grid">
               {trending.map((book) => {
                 const info = book.volumeInfo || book;
-
                 return (
                   <div key={book.id} className="book-card">
                     {info.imageLinks?.thumbnail && (
                       <img src={info.imageLinks.thumbnail} alt="cover" />
                     )}
-
                     <Link to={`/book/${book.id}`}>
                       <h4>{info.title}</h4>
                     </Link>
-
                     <p>{info.authors?.join(", ")}</p>
-
                     <button onClick={() => toggleFavorite(book)}>
                       {isSaved(book.id) ? "💔 Remove" : "❤️ Save"}
                     </button>
@@ -530,9 +509,7 @@ function Home() {
             >
               ← Previous
             </button>
-
             <span>Page {page + 1}</span>
-
             <button
               disabled={(page + 1) * resultsPerPage >= totalItems}
               onClick={() => {
