@@ -352,64 +352,59 @@ app.get("/api/recommendations", auth, async (req, res) => {
   try {
     const user = await User.findById(req.userId);
 
-    let personalized = [];
-    let trending = [];
+    // ── Build personalized fetch (or return cached) ───────────────────────────
+    const getPersonalized = async () => {
+      if (user.favorites.length === 0) return [];
 
-    // 🔥 Personalized — only fetch if user has favorites
-    if (user.favorites.length > 0) {
       const categories = user.favorites.flatMap(b => b.categories);
       const uniqueCategories = [...new Set(categories)];
-
       const query = uniqueCategories
         .slice(0, 3)
         .map(cat => cat.split("/")[0].trim())
         .join(" OR ");
 
-      // Check cache before hitting Google API
       const cacheKey = `personalized:${query}`;
-      const cachedPersonalized = getCached(cacheKey);
-
-      if (cachedPersonalized) {
-        personalized = cachedPersonalized;
-        console.log("Personalized (cached):", personalized.length);
-      } else {
-        try {
-          const response = await axios.get(
-            `https://www.googleapis.com/books/v1/volumes?q=${query}&maxResults=6&key=${process.env.GOOGLE_BOOKS_KEY}`
-          );
-          personalized = response.data.items || [];
-          setCache(cacheKey, personalized);
-          console.log("Personalized:", personalized.length);
-        } catch (err) {
-          // If Google API is down, return empty — don't crash the whole route
-          console.error("Personalized fetch failed:", err.message);
-        }
+      const cached = getCached(cacheKey);
+      if (cached) {
+        console.log("Personalized (cached):", cached.length);
+        return cached;
       }
-    }
 
-    // 📈 Trending — check cache first
-    const trendingCached = getCached("trending");
+      const response = await axios.get(
+        `https://www.googleapis.com/books/v1/volumes?q=${query}&maxResults=6&key=${process.env.GOOGLE_BOOKS_KEY}`
+      );
+      const data = response.data.items || [];
+      setCache(cacheKey, data);
+      console.log("Personalized:", data.length);
+      return data;
+    };
 
-    if (trendingCached) {
-      trending = trendingCached;
-      console.log("Trending (cached):", trending.length);
-    } else {
-      try {
-        const trendingRes = await axios.get(
-          `https://www.googleapis.com/books/v1/volumes?q=popular books&maxResults=6&key=${process.env.GOOGLE_BOOKS_KEY}`
-        );
-        trending = trendingRes.data.items || [];
-        setCache("trending", trending);
-        console.log("Trending:", trending.length);
-      } catch (err) {
-        // If Google API is down, return empty — don't crash the whole route
-        console.error("Trending fetch failed:", err.message);
+    // ── Build trending fetch (or return cached) ───────────────────────────────
+    const getTrending = async () => {
+      const cached = getCached("trending");
+      if (cached) {
+        console.log("Trending (cached):", cached.length);
+        return cached;
       }
-    }
+
+      const response = await axios.get(
+        `https://www.googleapis.com/books/v1/volumes?q=popular books&maxResults=6&key=${process.env.GOOGLE_BOOKS_KEY}`
+      );
+      const data = response.data.items || [];
+      setCache("trending", data);
+      console.log("Trending:", data.length);
+      return data;
+    };
+
+    // ── Fire both in parallel ─────────────────────────────────────────────────
+    const [personalized, trending] = await Promise.allSettled([
+      getPersonalized(),
+      getTrending()
+    ]);
 
     res.json({
-      personalized,
-      trending
+      personalized: personalized.status === "fulfilled" ? personalized.value : [],
+      trending: trending.status === "fulfilled" ? trending.value : []
     });
 
   } catch (err) {
