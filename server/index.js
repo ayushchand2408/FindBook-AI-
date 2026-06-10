@@ -7,6 +7,7 @@ const path = require("path");
 const fs = require("fs");
 const mongoose = require("mongoose");
 const cookieParser = require("cookie-parser");
+const { body, validationResult } = require("express-validator");
 require("dotenv").config();
 
 const app = express();
@@ -54,8 +55,26 @@ const User = require("./models/user");
 const auth = require("./middleware/auth");
 
 
+// ── Reusable validation error handler ────────────────────────────────────────
+function handleValidationErrors(req, res) {
+  const errors = validationResult(req);
+  if (!errors.isEmpty()) {
+    return res.status(400).json({ error: errors.array()[0].msg });
+  }
+  return null;
+}
+
 //For Login
-app.post("/api/login", async (req, res) => {
+app.post(
+  "/api/login",
+  [
+    body("email").isEmail().withMessage("Please enter a valid email").normalizeEmail(),
+    body("password").notEmpty().withMessage("Password is required")
+  ],
+  async (req, res) => {
+  const validationError = handleValidationErrors(req, res);
+  if (validationError) return;
+
   try {
     const { email, password } = req.body;
 
@@ -87,7 +106,20 @@ app.post("/api/login", async (req, res) => {
 });
 
 //For SignUp
-app.post("/api/register", async (req, res) => {
+app.post(
+  "/api/register",
+  [
+    body("name").trim().notEmpty().withMessage("Name is required")
+      .isLength({ min: 2, max: 50 }).withMessage("Name must be between 2 and 50 characters"),
+    body("email").isEmail().withMessage("Please enter a valid email").normalizeEmail(),
+    body("password")
+      .isLength({ min: 6 }).withMessage("Password must be at least 6 characters")
+      .matches(/\d/).withMessage("Password must contain at least one number")
+  ],
+  async (req, res) => {
+  const validationError = handleValidationErrors(req, res);
+  if (validationError) return;
+
   try {
     const { name, email, password } = req.body;
 
@@ -178,16 +210,36 @@ const storage = multer.diskStorage({
   },
 });
 
-const upload = multer({ storage });
+const fileFilter = (req, file, cb) => {
+  const allowedTypes = ["image/jpeg", "image/png", "image/webp", "image/jpg"];
+  if (allowedTypes.includes(file.mimetype)) {
+    cb(null, true);
+  } else {
+    cb(new Error("Only JPEG, PNG, and WEBP images are allowed"), false);
+  }
+};
+
+const upload = multer({
+  storage,
+  fileFilter,
+  limits: { fileSize: 5 * 1024 * 1024 } // 5MB max
+});
 
 //  NEW: Book Search Route
 app.get("/api/search", async (req, res) => {
   const query = req.query.q;
   const startIndex = req.query.startIndex || 0;
 
+  if (!query || !query.trim()) {
+    return res.status(400).json({ error: "Search query is required" });
+  }
+
+  const safeQuery = encodeURIComponent(query.trim().slice(0, 200)); // sanitize + limit length
+  const safeStart = parseInt(startIndex) || 0;
+
   try {
     const response = await axios.get(
-      `https://www.googleapis.com/books/v1/volumes?q=${query}&startIndex=${startIndex}&maxResults=10&key=${process.env.GOOGLE_BOOKS_KEY}`
+      `https://www.googleapis.com/books/v1/volumes?q=${safeQuery}&startIndex=${safeStart}&maxResults=10&key=${process.env.GOOGLE_BOOKS_KEY}`
     );
 
     res.json(response.data);
@@ -351,7 +403,7 @@ app.delete("/api/favorite/:bookId", auth, async (req, res) => {
 
     await user.save();
 
-    res.json({ message: "Removed from favorites ❌" });
+    res.json({ message: "Removed from favorites " });
 
   } catch (err) {
     console.error(err);
