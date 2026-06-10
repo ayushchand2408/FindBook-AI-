@@ -8,6 +8,7 @@ const fs = require("fs");
 const mongoose = require("mongoose");
 const cookieParser = require("cookie-parser");
 const { body, validationResult } = require("express-validator");
+const rateLimit = require("express-rate-limit");
 require("dotenv").config();
 
 const app = express();
@@ -45,6 +46,32 @@ function getCached(key) {
 function setCache(key, data) {
   cache[key] = { data, time: Date.now() };
 }
+// ── Rate Limiters ─────────────────────────────────────────────────────────────
+
+const loginLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000, // 15 minutes
+  max: 5,
+  message: { error: "Too many login attempts. Please try again after 15 minutes." },
+  standardHeaders: true,
+  legacyHeaders: false,
+});
+
+const registerLimiter = rateLimit({
+  windowMs: 60 * 60 * 1000, // 1 hour
+  max: 10,
+  message: { error: "Too many accounts created from this IP. Please try again after an hour." },
+  standardHeaders: true,
+  legacyHeaders: false,
+});
+
+const uploadLimiter = rateLimit({
+  windowMs: 60 * 60 * 1000, // 1 hour
+  max: 20,
+  message: { error: "Too many upload requests. Please try again after an hour." },
+  standardHeaders: true,
+  legacyHeaders: false,
+});
+
 mongoose.connect(process.env.MONGO_URI)
 .then(() => console.log("MongoDB connected"))
 .catch(err => console.log(err));
@@ -67,6 +94,7 @@ function handleValidationErrors(req, res) {
 //For Login
 app.post(
   "/api/login",
+  loginLimiter,
   [
     body("email").isEmail().withMessage("Please enter a valid email").normalizeEmail(),
     body("password").notEmpty().withMessage("Password is required")
@@ -108,6 +136,7 @@ app.post(
 //For SignUp
 app.post(
   "/api/register",
+  registerLimiter,
   [
     body("name").trim().notEmpty().withMessage("Name is required")
       .isLength({ min: 2, max: 50 }).withMessage("Name must be between 2 and 50 characters"),
@@ -276,7 +305,7 @@ app.get("/api/book/:id", async (req, res) => {
 });
 
 //  Upload + OCR + Search
-app.post("/api/upload-book", upload.single("image"), async (req, res) => {
+app.post("/api/upload-book", uploadLimiter, upload.single("image"), async (req, res) => {
   try {
     const imagePath = req.file.path;
 
@@ -403,7 +432,7 @@ app.delete("/api/favorite/:bookId", auth, async (req, res) => {
 
     await user.save();
 
-    res.json({ message: "Removed from favorites " });
+    res.json({ message: "Removed from favorites ❌" });
 
   } catch (err) {
     console.error(err);
