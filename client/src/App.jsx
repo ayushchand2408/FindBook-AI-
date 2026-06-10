@@ -58,9 +58,10 @@ function Home({ isLoggedIn, setIsLoggedIn }) {
 
   const isSaved = (bookId) => favorites.some((b) => b.bookId === bookId);
 
+
   /* -------------------- AUTH CHECK ON MOUNT -------------------- */
-  // Pings a protected route to see if cookie is valid
-  // No token reading, no localStorage — purely cookie-based
+  // Runs once on mount only — checks if the cookie is still valid.
+  // Does NOT depend on isLoggedIn to avoid re-firing after every login.
 
   useEffect(() => {
     const checkAuth = async () => {
@@ -82,7 +83,7 @@ function Home({ isLoggedIn, setIsLoggedIn }) {
     };
 
     checkAuth();
-  },  [isLoggedIn]);
+  }, []); // ✅ empty array — run once on mount only
 
   /* -------------------- SEARCH -------------------- */
 
@@ -531,7 +532,7 @@ function Home({ isLoggedIn, setIsLoggedIn }) {
    APP ROUTES
    ========================================================= */
 function App() {
-  const [isLoggedIn, setIsLoggedIn] = useState(false); // move it here
+  const [isLoggedIn, setIsLoggedIn] = useState(false);
   return (
     <Routes>
       <Route path="/" element={<Home isLoggedIn={isLoggedIn} setIsLoggedIn={setIsLoggedIn} />} />
