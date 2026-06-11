@@ -31,28 +31,34 @@
 │  └────────────────────────────────┬───────────────────────────────┘  │
 │                                   │                                   │
 │  ┌────────────────────────────────▼───────────────────────────────┐  │
-│  │           Mode-Based State Engine (useState + useEffect)        │  │
-│  │          mode: "recommendation" | "search" | "upload"           │  │
+│  │     Custom Hooks: useAuth | useFavorites | useBooks             │  │
+│  │     Mode-Based State Engine: "recommendation"|"search"|"upload" │  │
 │  └────────────────────────────────┬───────────────────────────────┘  │
-│                                   │ fetch()                           │
+│                                   │ fetch() + httpOnly cookie         │
 └───────────────────────────────────┼───────────────────────────────────┘
-                                    │ HTTP (JWT in Authorization header)
+                                    │
 ┌───────────────────────────────────┼───────────────────────────────────┐
 │                         SERVER (Express.js)                            │
 │                                   │                                    │
-│  ┌────────────────────────────────▼───────────────────────────────┐   │
-│  │                      Auth Middleware (JWT)                       │   │
+│  ┌──────────────────────────────────────────────────────────────┐     │
+│  │   Rate Limiter (express-rate-limit) + Input Validation        │     │
+│  │              (express-validator)                               │     │
+│  └────────────────────────┬─────────────────────────────────────┘     │
+│                           │                                            │
+│  ┌────────────────────────▼───────────────────────────────────────┐   │
+│  │                   Auth Middleware (JWT + httpOnly Cookie)        │   │
 │  └───────┬──────────────────┬─────────────────┬────────────────────┘  │
 │          │                  │                 │                         │
 │  ┌───────▼──────┐  ┌────────▼───────┐  ┌─────▼──────────┐            │
 │  │  Auth Routes  │  │  Book Routes   │  │  OCR Route      │            │
 │  │  /register   │  │  /search       │  │  /upload-book   │            │
 │  │  /login      │  │  /book/:id     │  │  (Tesseract.js) │            │
-│  └──────────────┘  │  /favorite     │  └────────────────┘            │
-│                    │  /favorites    │                                   │
+│  │  /logout     │  │  /favorite     │  └────────────────┘            │
+│  └──────────────┘  │  /favorites    │                                   │
 │                    │  /favorite/:id │                                   │
+│                    │  /recommendations                                  │
 │                    └────────┬───────┘                                  │
-│                             │ Axios                                     │
+│                             │ Axios + In-Memory Cache                   │
 │                    ┌────────▼───────┐                                  │
 │                    │ Google Books   │                                   │
 │                    │     API        │                                   │
@@ -60,7 +66,7 @@
 │                                                                        │
 │  ┌─────────────────────────────────────────────────────────────────┐  │
 │  │                    MongoDB Atlas (Mongoose)                       │  │
-│  │          Collections: users  │  favorites                        │  │
+│  │              Collections: users (favorites embedded)             │  │
 │  └─────────────────────────────────────────────────────────────────┘  │
 └────────────────────────────────────────────────────────────────────────┘
 ```
@@ -70,9 +76,16 @@
 ##  Features
 
 ###  Authentication
-- JWT-based auth with protected routes
-- Token persisted in `localStorage`; injected via `Authorization: Bearer` header on all protected calls
+- JWT-based auth stored in **httpOnly cookies** (not localStorage — XSS safe)
+- Cookie expires after **24 hours** with explicit `expires` + `maxAge` for cross-browser consistency
 - Auth middleware on all sensitive endpoints
+- Secure cookie flags in production (`secure: true`, `sameSite: none`)
+
+###  Security
+- **Rate limiting** — 5 login attempts / 15 min, 10 registrations / hr, 20 uploads / hr
+- **Input validation** on all auth routes via `express-validator` (server-side) + Mongoose schema constraints (DB-level)
+- **File upload protection** — only JPEG, PNG, WEBP accepted, 5MB size limit
+- **Search query sanitization** — `encodeURIComponent` + length cap before hitting Google API
 
 ###  Book Search
 - Full-text search via Google Books API
@@ -80,13 +93,14 @@
 - Pagination with `startIndex` offset
 
 ###  Personalized Recommendations
-- On login with no active search: generates recommendations derived from saved favorites' genres/authors
-- Falls back to curated trending titles when no favorites exist
-- Mode-based UI architecture (`"recommendation"` | `"search"` | `"upload"`) eliminates flag sprawl
+- Generates recommendations from saved favorites' genres/categories
+- Falls back to trending titles when no favorites exist
+- Both API calls fired **in parallel** via `Promise.allSettled` for faster response
+- In-memory caching to avoid redundant Google API calls
 
 ###  OCR Book Detection
-- Upload a book cover photo → Tesseract.js extracts text → triggers an automatic Google Books search
-- Handles noise/partial text gracefully via fuzzy matching on extracted strings
+- Upload a book cover photo → Tesseract.js extracts text → triggers automatic Google Books search
+- Handles noise/partial text gracefully
 
 ###  Favorites System
 - Save/remove books with full metadata persistence (MongoDB)
@@ -104,30 +118,27 @@
 ```
 FindBook-AI/
 ├── client/                         # React + Vite frontend
-│   ├── public/
-│   │   └── vite.svg
 │   ├── src/
-│   │   ├── assets/
-│   │   ├── App.jsx                 # Route definitions + global layout
-│   │   ├── App.css
+│   │   ├── hooks/
+│   │   │   ├── useAuth.js          # Auth check, logout logic
+│   │   │   ├── useFavorites.js     # Favorites state, toggle, isSaved
+│   │   │   └── useBooks.js         # Search, upload, recommendations, pagination
+│   │   ├── App.jsx                 # Route definitions + Home component
 │   │   ├── BookDetail.jsx          # Dynamic route: /book/:id
-│   │   ├── BookFilter.jsx          # Search filters UI component
-│   │   ├── BookFilter.css
+│   │   ├── BookFilter.jsx          # Search filters UI
 │   │   ├── Favorites.jsx           # Saved books page
 │   │   ├── Login.jsx               # Auth page (login + register)
-│   │   ├── main.jsx                # Vite entry point
-│   │   └── index.css
+│   │   └── main.jsx                # Vite entry point
 │   ├── index.html
 │   ├── vite.config.js
 │   └── package.json
 │
 └── server/                         # Node.js + Express backend
     ├── middleware/
-    │   └── auth.js                 # JWT verification middleware
+    │   └── auth.js                 # JWT cookie verification middleware
     ├── models/
-    │   └── user.js                 # Mongoose User model (favorites embedded)
-    ├── uploads/                    # Temp storage for OCR image uploads
-    ├── eng.traineddata             # Tesseract.js English language data
+    │   └── user.js                 # Mongoose User schema (favorites embedded)
+    ├── uploads/                    # Temp storage for OCR images (auto-deleted)
     ├── index.js                    # Express app + all route handlers
     ├── .env
     └── package.json
@@ -137,25 +148,15 @@ FindBook-AI/
 
 ##  API Reference
 
-All protected routes require the header:
-```
-Authorization: Bearer <token>
-```
+All protected routes require a valid JWT stored in the `token` httpOnly cookie (set automatically on login).
 
 ### Auth
 
 | Method | Endpoint | Auth | Body | Description |
 |--------|----------|------|------|-------------|
 | `POST` | `/api/register` | ❌ | `{ name, email, password }` | Register new user |
-| `POST` | `/api/login` | ❌ | `{ email, password }` | Returns JWT token |
-
-**Login Response:**
-```json
-{
-  "token": "eyJhbGciOiJIUzI1NiIs...",
-  "user": { "id": "...", "name": "John Doe", "email": "john@example.com" }
-}
-```
+| `POST` | `/api/login` | ❌ | `{ email, password }` | Login — sets httpOnly cookie |
+| `POST` | `/api/logout` | ✅ | — | Clears auth cookie |
 
 ---
 
@@ -164,26 +165,8 @@ Authorization: Bearer <token>
 | Method | Endpoint | Auth | Query Params | Description |
 |--------|----------|------|--------------|-------------|
 | `GET` | `/api/search` | ✅ | `q`, `startIndex` | Search Google Books API |
-| `GET` | `/api/book/:id` | ✅ | — | Fetch single book by Google Books volume ID |
-
-**Search Response:**
-```json
-{
-  "totalItems": 248,
-  "items": [
-    {
-      "id": "zyTCAlFPjgYC",
-      "volumeInfo": {
-        "title": "The Pragmatic Programmer",
-        "authors": ["David Thomas", "Andrew Hunt"],
-        "description": "...",
-        "imageLinks": { "thumbnail": "https://..." },
-        "categories": ["Computers"]
-      }
-    }
-  ]
-}
-```
+| `GET` | `/api/book/:id` | ✅ | — | Fetch single book by volume ID |
+| `GET` | `/api/recommendations` | ✅ | — | Get personalized + trending books |
 
 ---
 
@@ -192,23 +175,8 @@ Authorization: Bearer <token>
 | Method | Endpoint | Auth | Body | Description |
 |--------|----------|------|------|-------------|
 | `POST` | `/api/favorite` | ✅ | `{ bookId, title, authors, thumbnail, categories }` | Save a book |
-| `GET` | `/api/favorites` | ✅ | — | Get all saved books for the current user |
+| `GET` | `/api/favorites` | ✅ | — | Get all saved books |
 | `DELETE` | `/api/favorite/:bookId` | ✅ | — | Remove a saved book |
-
-**Favorites Response:**
-```json
-[
-  {
-    "_id": "64f2a...",
-    "bookId": "zyTCAlFPjgYC",
-    "title": "The Pragmatic Programmer",
-    "authors": ["David Thomas"],
-    "thumbnail": "https://...",
-    "categories": ["Computers"],
-    "savedAt": "2024-09-01T10:23:00.000Z"
-  }
-]
-```
 
 ---
 
@@ -216,15 +184,7 @@ Authorization: Bearer <token>
 
 | Method | Endpoint | Auth | Body | Description |
 |--------|----------|------|------|-------------|
-| `POST` | `/api/upload-book` | ✅ | `multipart/form-data` — field: `image` | Upload book cover → returns extracted text + search results |
-
-**OCR Response:**
-```json
-{
-  "extractedText": "The Pragmatic Programmer",
-  "searchResults": { "totalItems": 12, "items": [ ... ] }
-}
-```
+| `POST` | `/api/upload-book` | ✅ | `multipart/form-data` — field: `image` | Upload cover → OCR → search results |
 
 ---
 
@@ -235,7 +195,8 @@ Authorization: Bearer <token>
 PORT=5000
 MONGO_URI=mongodb+srv://<user>:<password>@cluster.mongodb.net/findbookai
 JWT_SECRET=your_jwt_secret_key
-GOOGLE_BOOKS_API_KEY=your_google_books_api_key
+GOOGLE_BOOKS_KEY=your_google_books_api_key
+NODE_ENV=development
 ```
 
 ### Client (`client/.env`)
@@ -269,7 +230,7 @@ cd ../client && npm install
 
 ### 3. Configure environment variables
 ```bash
-# In /server — copy and fill in your values
+# In /server — create .env and fill in your values
 cp .env.example .env
 
 # In /client
@@ -279,7 +240,7 @@ cp .env.example .env
 ### 4. Run development servers
 ```bash
 # Terminal 1 — Backend (http://localhost:5000)
-cd server && npm run dev
+cd server && node index.js
 
 # Terminal 2 — Frontend (http://localhost:5173)
 cd client && npm run dev
@@ -292,12 +253,14 @@ cd client && npm run dev
 | Layer | Technology |
 |-------|-----------|
 | Frontend | React 18, Vite, React Router v6 |
-| State Management | useState + useEffect (mode-driven architecture) |
-| HTTP (Client) | Fetch API |
-| HTTP (Server) | Axios |
+| State Management | Custom Hooks (useAuth, useFavorites, useBooks) |
+| HTTP Client | Fetch API |
+| HTTP Server | Axios |
 | Backend | Node.js, Express.js |
+| Validation | express-validator, Mongoose schema constraints |
+| Rate Limiting | express-rate-limit |
 | Database | MongoDB Atlas, Mongoose |
-| Authentication | JWT (jsonwebtoken), bcrypt |
+| Authentication | JWT (jsonwebtoken), bcrypt, httpOnly cookies |
 | OCR | Tesseract.js |
 | External API | Google Books API v1 |
 
@@ -305,19 +268,19 @@ cd client && npm run dev
 
 ##  Roadmap
 
-- [ ] Reading list & progress tracking (currently reading / finished)
-- [ ] Rate & review books (stored in MongoDB)
-- [ ] Recommendation engine v2 — weighted scoring by genre overlap + author affinity
-- [ ] Social features — share reading lists
-- [ ] Full deployment (Render backend + Vercel frontend)
-- [ ] Redis caching layer for frequent Google Books queries
 - [ ] Refresh token rotation
+- [ ] Redis caching layer for Google Books queries
+- [ ] Reading list & progress tracking (currently reading / finished)
+- [ ] Rate & review books
+- [ ] Recommendation engine v2 — weighted scoring by genre + author affinity
+- [ ] Full deployment (Render backend + Vercel frontend)
+- [ ] Social features — share reading lists
 
 ---
 
 ## 🤝 Contributing
 
-Pull requests are welcome. For major changes, please open an issue first to discuss what you'd like to change.
+Pull requests are welcome. For major changes, please open an issue first.
 
 1. Fork the repo
 2. Create your feature branch (`git checkout -b feature/AmazingFeature`)
