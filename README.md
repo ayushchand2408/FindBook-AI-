@@ -4,22 +4,28 @@
 
 ### AI-Powered Book Search & Recommendation Platform
 
-[![GitHub Repo](https://img.shields.io/badge/GitHub-FindBook--AI-181717?style=for-the-badge&logo=github)](https://github.com/YOUR_USERNAME/FindBook-AI)
+[![GitHub Repo](https://img.shields.io/badge/GitHub-FindBook--AI-181717?style=for-the-badge&logo=github)](https://github.com/ayushchand2408/FindBook-AI)
+[![Live Demo](https://img.shields.io/badge/Live%20Demo-Vercel-000000?style=for-the-badge&logo=vercel&logoColor=white)](https://find-book-ai-flax.vercel.app/)
+[![Backend](https://img.shields.io/badge/Backend-Render-46E3B7?style=for-the-badge&logo=render&logoColor=white)](https://findbook-ai.onrender.com)
 [![Node.js](https://img.shields.io/badge/Node.js-18+-339933?style=for-the-badge&logo=node.js&logoColor=white)](https://nodejs.org/)
-[![React](https://img.shields.io/badge/React-18-61DAFB?style=for-the-badge&logo=react&logoColor=black)](https://reactjs.org/)
+[![React](https://img.shields.io/badge/React-19-61DAFB?style=for-the-badge&logo=react&logoColor=black)](https://reactjs.org/)
 [![MongoDB](https://img.shields.io/badge/MongoDB-Atlas-47A248?style=for-the-badge&logo=mongodb&logoColor=white)](https://www.mongodb.com/atlas)
 [![JWT](https://img.shields.io/badge/Auth-JWT-000000?style=for-the-badge&logo=jsonwebtokens)](https://jwt.io/)
 
 *A full-stack, production-grade application that combines Google Books search, OCR-based book detection, and a personalized recommendation engine — all behind a secure JWT authentication layer.*
 
+###  [Live App →](https://find-book-ai-flax.vercel.app/)
+
 </div>
+
+> ⚠️ **Note on first load:** The backend is hosted on Render's free tier, which spins down after periods of inactivity. The **first request may take 30–50 seconds** while the server cold-starts — subsequent requests will be fast.
 
 
 ##  Architecture
 
 ```
 ┌─────────────────────────────────────────────────────────────────────┐
-│                         CLIENT (React + Vite)                        │
+│              CLIENT — React + Vite  (Deployed on Vercel)              │
 │                                                                       │
 │  ┌────────────┐  ┌─────────────┐  ┌───────────┐  ┌──────────────┐  │
 │  │   Search   │  │    Book     │  │ Favorites │  │  OCR Upload  │  │
@@ -36,9 +42,9 @@
 │  └────────────────────────────────┬───────────────────────────────┘  │
 │                                   │ fetch() + httpOnly cookie         │
 └───────────────────────────────────┼───────────────────────────────────┘
-                                    │
+                                    │  (cross-origin, credentials: include)
 ┌───────────────────────────────────┼───────────────────────────────────┐
-│                         SERVER (Express.js)                            │
+│              SERVER — Express.js   (Deployed on Render)                │
 │                                   │                                    │
 │  ┌──────────────────────────────────────────────────────────────┐     │
 │  │   Rate Limiter (express-rate-limit) + Input Validation        │     │
@@ -70,6 +76,13 @@
 │  └─────────────────────────────────────────────────────────────────┘  │
 └────────────────────────────────────────────────────────────────────────┘
 ```
+
+**Live URLs:**
+| Service | Platform | URL |
+|---------|----------|-----|
+| Frontend | Vercel | [find-book-ai-flax.vercel.app](https://find-book-ai-flax.vercel.app/) |
+| Backend  | Render  | [findbook-ai.onrender.com](https://findbook-ai.onrender.com) |
+| Database | MongoDB Atlas | (private cluster) |
 
 ---
 
@@ -215,7 +228,7 @@ VITE_API_BASE_URL=http://localhost:5000
 
 ### 1. Clone the repository
 ```bash
-git clone https://github.com/YOUR_USERNAME/FindBook-AI.git
+git clone https://github.com/ayushchand2408/FindBook-AI.git
 cd FindBook-AI
 ```
 
@@ -252,29 +265,68 @@ cd client && npm run dev
 
 | Layer | Technology |
 |-------|-----------|
-| Frontend | React 18, Vite, React Router v6 |
+| Frontend | React 19, Vite, React Router v7 |
+| Frontend Hosting | Vercel |
 | State Management | Custom Hooks (useAuth, useFavorites, useBooks) |
-| HTTP Client | Fetch API |
-| HTTP Server | Axios |
-| Backend | Node.js, Express.js |
+| Frontend → Backend | Fetch API (httpOnly cookie auth, `credentials: "include"`) |
+| Backend | Node.js, Express 5 |
+| Backend Hosting | Render |
+| Backend → Google Books | Axios |
 | Validation | express-validator, Mongoose schema constraints |
 | Rate Limiting | express-rate-limit |
-| Database | MongoDB Atlas, Mongoose |
+| Database | MongoDB Atlas, Mongoose 9 |
 | Authentication | JWT (jsonwebtoken), bcrypt, httpOnly cookies |
 | OCR | Tesseract.js |
 | External API | Google Books API v1 |
 
 ---
 
-##  Roadmap
+##  Deployment
+
+The app is live with the backend on **Render** and the frontend on **Vercel**.
+
+| Service | Platform | URL |
+|---------|----------|-----|
+| Frontend | Vercel | https://find-book-ai-flax.vercel.app/ |
+| Backend  | Render  | https://findbook-ai.onrender.com |
+
+### Backend — Render
+1. Create a new **Web Service** on Render, pointing at the `server/` directory.
+2. **Build Command:** `npm install`
+3. **Start Command:** `npm start` (runs `node index.js`)
+4. Add the following environment variables in the Render dashboard:
+   ```env
+   PORT=5000
+   MONGO_URI=<your MongoDB Atlas connection string>
+   JWT_SECRET=<your JWT secret>
+   GOOGLE_BOOKS_KEY=<your Google Books API key>
+   NODE_ENV=production
+   CLIENT_URL=https://find-book-ai-flax.vercel.app
+   ```
+5. `NODE_ENV=production` is required — it enables `secure: true` and `sameSite: "none"` on the auth cookie, which is mandatory for cross-domain (Vercel ↔ Render) cookie auth to work.
+6. `CLIENT_URL` must match the Vercel origin exactly (no trailing slash) — it's used in the CORS allow-list.
+
+> ⚠️ **Free tier note:** Render's free web services spin down after 15 minutes of inactivity. The first request after idling will take 30–50 seconds to wake the server (cold start) — this is expected and not a bug.
+
+### Frontend — Vercel
+1. Import the repo into Vercel, set the **Root Directory** to `client/`.
+2. **Build Command:** `npm run build` (auto-detected for Vite)
+3. **Output Directory:** `dist` (auto-detected)
+4. Add the environment variable in the Vercel dashboard (Project Settings → Environment Variables):
+   ```env
+   VITE_API_BASE_URL=https://findbook-ai.onrender.com
+   ```
+5. Redeploy after adding env vars — Vite inlines `VITE_*` vars at build time, so they won't take effect on a running deployment without a fresh build.
+
+
 
 - [ ] Refresh token rotation
-- [ ] Redis caching layer for Google Books queries
+- [ ] Redis caching layer for Google Books queries (replace in-memory cache for multi-instance deploys)
 - [ ] Reading list & progress tracking (currently reading / finished)
 - [ ] Rate & review books
 - [ ] Recommendation engine v2 — weighted scoring by genre + author affinity
-- [ ] Full deployment (Render backend + Vercel frontend)
 - [ ] Social features — share reading lists
+- [ ] Persist OCR `uploads/` to cloud storage (Render's filesystem is ephemeral on free tier)
 
 ---
 
